@@ -25,25 +25,27 @@ jobs:
         with:
           gradle-version: '8.5'
 
+      - name: Accept Android Licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
       - name: Build Debug APK
         run: |
-          if [ -f "settings.gradle" ]; then
-            echo "检测到项目位于仓库根目录，开始编译..."
-            gradle assembleDebug --stacktrace
-          elif [ -f "YikuScooterApp/settings.gradle" ]; then
-            echo "检测到项目位于 YikuScooterApp 子目录，进入编译..."
-            cd YikuScooterApp
-            gradle assembleDebug --stacktrace
-          else
-            echo "未找到 settings.gradle，当前目录结构如下："
-            ls -la
-            find . -maxdepth 2
-            exit 1
-          fi
+          gradle assembleDebug --stacktrace
 
       - name: Upload APK Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: 壹酷封神DZ-智能仪表控车-v1.0.0
-          path: "**/app/build/outputs/apk/debug/app-debug.apk"
+          path: "app/build/outputs/apk/debug/app-debug.apk"
           if-no-files-found: error
+
+      - name: Upload Build Reports on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-failure-reports
+          path: |
+            app/build/reports/
+            build/reports/

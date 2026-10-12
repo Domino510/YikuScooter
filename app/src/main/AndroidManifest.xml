@@ -23,7 +23,7 @@
         android:label="壹酷 封神DZ"
         android:roundIcon="@android:drawable/ic_dialog_info"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.NoActionBar">
+        android:theme="@style/AppTheme">
 
         <!-- 主控制与仪表界面 -->
         <activity

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="tv_total_trip" type="id" />
+    <item name="ind_error" type="id" />
+</resources>
