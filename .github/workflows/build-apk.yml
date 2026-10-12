@@ -33,20 +33,11 @@ jobs:
 
       - name: Build Debug APK
         run: |
-          gradle assembleDebug --stacktrace --no-daemon 2>&1 | tee build_log.txt
-
-      - name: Report Build Error on Failure
-        if: failure()
-        run: |
-          tail -n 120 build_log.txt > err.txt
-          gh issue create --title "Build Error Log" --body-file err.txt --repo Domino510/YikuScooter || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          gradle assembleDebug --stacktrace --no-daemon
 
       - name: Upload APK Artifact
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: 壹酷封神DZ-智能仪表控车-v1.0.0
-          path: "app/build/outputs/apk/debug/app-debug.apk"
+          path: "**/*.apk"
           if-no-files-found: error
