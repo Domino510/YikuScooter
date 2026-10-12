@@ -12,6 +12,7 @@ import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -34,8 +35,12 @@ import com.onecool.scooter.service.BleVehicleService;
  */
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "MainActivity";
+    private static final int PERMISSION_REQ_CODE = 100;
+
     private BleVehicleService mBleService;
     private boolean mIsBound = false;
+    private boolean mIsReceiverRegistered = false;
 
     // UI 组件
     private TextView tvSpeed, tvGear, tvVoltage, tvBattery, tvOnceTrip, tvTotalTrip, tvStatusDot, tvConnStatus;
@@ -69,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
     private final BroadcastReceiver mStatusReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            if (intent == null) return;
             String action = intent.getAction();
             if (BleVehicleService.ACTION_STATUS_UPDATED.equals(action)) {
                 int speed = intent.getIntExtra("speed", 0);
@@ -93,25 +99,25 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 保持屏幕常亮
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        try {
+            // 保持屏幕常亮
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        // 检查横竖屏加载对应布局
-        checkOrientationLayout();
+            // 检查横竖屏加载对应布局
+            checkOrientationLayout();
 
-        initViews();
-        checkAndRequestPermissions();
+            initViews();
+            registerStatusReceiver();
 
-        // 启动并绑定后台长连接服务
-        Intent serviceIntent = new Intent(this, BleVehicleService.class);
-        startService(serviceIntent);
-        bindService(serviceIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
-
-        // 注册广播接收
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(BleVehicleService.ACTION_STATUS_UPDATED);
-        filter.addAction(BleVehicleService.ACTION_BLE_STATE_CHANGED);
-        registerReceiver(mStatusReceiver, filter);
+            // 权限检查：授予权限后再启动蓝牙后台服务，避免 Android 14+ 触发 SecurityException 闪退
+            if (hasRequiredPermissions()) {
+                startVehicleService();
+            } else {
+                requestRequiredPermissions();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "onCreate error: ", e);
+        }
     }
 
     private void checkOrientationLayout() {
@@ -187,6 +193,73 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void registerStatusReceiver() {
+        if (mIsReceiverRegistered) return;
+        try {
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(BleVehicleService.ACTION_STATUS_UPDATED);
+            filter.addAction(BleVehicleService.ACTION_BLE_STATE_CHANGED);
+
+            // Android 14 (API 34) 严格要求指定 RECEIVER_NOT_EXPORTED，否则抛出 SecurityException 导致启动即闪退
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(mStatusReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                registerReceiver(mStatusReceiver, filter);
+            }
+            mIsReceiverRegistered = true;
+        } catch (Exception e) {
+            Log.e(TAG, "registerReceiver failed", e);
+        }
+    }
+
+    private boolean hasRequiredPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
+                    && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+                    && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        }
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestRequiredPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            String[] permissions = new String[]{
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+            };
+            ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQ_CODE);
+        } else {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_REQ_CODE);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQ_CODE) {
+            if (hasRequiredPermissions()) {
+                startVehicleService();
+            } else {
+                Toast.makeText(this, "请授予蓝牙与位置权限以连接车机", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    private void startVehicleService() {
+        try {
+            Intent serviceIntent = new Intent(this, BleVehicleService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent);
+            } else {
+                startService(serviceIntent);
+            }
+            bindService(serviceIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
+        } catch (Exception e) {
+            Log.e(TAG, "startVehicleService failed: ", e);
+        }
+    }
+
     private void sendCommand(int cmd) {
         if (mBleService != null && mBleService.isConnected()) {
             boolean success = mBleService.sendCommand(cmd);
@@ -239,28 +312,19 @@ public class MainActivity extends AppCompatActivity {
         if (indSpeedLimit != null) indSpeedLimit.setSelected(speedLimit);
     }
 
-    private void checkAndRequestPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            String[] permissions = new String[]{
-                    Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.BLUETOOTH_CONNECT,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-            };
-            for (String p : permissions) {
-                if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(this, permissions, 100);
-                    break;
-                }
-            }
-        }
-    }
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(mStatusReceiver);
+        if (mIsReceiverRegistered) {
+            try {
+                unregisterReceiver(mStatusReceiver);
+            } catch (Exception ignored) {}
+            mIsReceiverRegistered = false;
+        }
         if (mIsBound) {
-            unbindService(mServiceConnection);
+            try {
+                unbindService(mServiceConnection);
+            } catch (Exception ignored) {}
             mIsBound = false;
         }
     }
