@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- 顶部连接状态栏 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@color/bg_card"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="壹酷 封神DZ"
+                android:textColor="@color/cyan"
+                android:textStyle="bold"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tv_status_dot"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="● "
+                android:textColor="@color/red"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tv_conn_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="等待连接..."
+                android:textColor="@color/text_dim"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- 实时数据预览卡片 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:background="@color/bg_card"
+                android:padding="12dp"
+                android:layout_marginEnd="6dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="实时车速" android:textColor="@color/text_dim" android:textSize="11sp" />
+                <TextView android:id="@+id/tv_speed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textColor="#FFFFFF" android:textSize="32sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="KM/H" android:textColor="@color/text_dim" android:textSize="10sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:background="@color/bg_card"
+                android:padding="12dp"
+                android:layout_marginStart="6dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="精准母线电压" android:textColor="@color/text_dim" android:textSize="11sp" />
+                <TextView android:id="@+id/tv_voltage" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="--.-" android:textColor="@color/cyan" android:textSize="32sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="VOLTS" android:textColor="@color/text_dim" android:textSize="10sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 核心控车大按钮 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="核心控车"
+            android:textColor="@color/text_dim"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_power_on"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:text="⚡ 一键开机"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="@color/green"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btn_power_off"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:text="🔌 一键关机"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="@color/red"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <Button
+                android:id="@+id/btn_lock_toggle"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:text="🔒 设防上锁"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="@color/amber" />
+
+            <Button
+                android:id="@+id/btn_speed_limit_toggle"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:text="🚀 解除限速"
+                android:textColor="#08101A"
+                android:backgroundTint="@color/cyan" />
+        </LinearLayout>
+
+        <!-- ECU 调参专区 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ECU 控制器高级调参 (免密解锁)"
+            android:textColor="@color/text_dim"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/bg_card"
+            android:padding="16dp">
+
+            <Switch
+                android:id="@+id/sw_ecu_tcs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="TCS 牵引力控制"
+                android:textColor="@color/text_main"
+                android:paddingVertical="8dp" />
+
+            <Switch
+                android:id="@+id/sw_ecu_start_mode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="启动方式 (软启动 / 硬启动)"
+                android:textColor="@color/text_main"
+                android:paddingVertical="8dp" />
+
+            <Switch
+                android:id="@+id/sw_ecu_hdc"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="陡坡缓降 (HDC) &amp; 坡道驻车"
+                android:textColor="@color/text_main"
+                android:paddingVertical="8dp" />
+
+            <Switch
+                android:id="@+id/sw_ecu_ebs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="EBS 能量回收制动"
+                android:textColor="@color/text_main"
+                android:paddingVertical="8dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp">
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="动能回收制动力矩 (1~255)" android:textColor="@color/text_dim" android:textSize="12sp" />
+                <TextView android:id="@+id/tv_ebs_current_val" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="128" android:textColor="@color/purple" android:textStyle="bold" />
+            </LinearLayout>
+
+            <SeekBar
+                android:id="@+id/seek_ebs_current"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="255"
+                android:progress="128"
+                android:layout_marginTop="6dp" />
+
+            <Button
+                android:id="@+id/btn_apply_ecu"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="16dp"
+                android:text="同步参数至控制器 ECU"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="@color/purple" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

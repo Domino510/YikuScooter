@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg_card"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tv_widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="壹酷 封神DZ"
+            android:textColor="@color/cyan"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tv_widget_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="未连接"
+            android:textColor="@color/text_dim"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/tv_widget_voltage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="--.-V"
+            android:textColor="@color/text_main"
+            android:textStyle="bold"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp">
+
+        <Button
+            android:id="@+id/btn_widget_power_on"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:text="⚡ 开机"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/green"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btn_widget_power_off"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:text="🔌 关机"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/red"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btn_widget_speed_limit"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="🚀 解限速"
+            android:textColor="#08101A"
+            android:backgroundTint="@color/cyan"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+</LinearLayout>
