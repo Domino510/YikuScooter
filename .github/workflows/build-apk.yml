@@ -5,6 +5,8 @@ on:
     branches: [ "**" ]
   workflow_dispatch:
 
+permissions: write-all
+
 jobs:
   build:
     name: Build & Generate APK
@@ -31,7 +33,15 @@ jobs:
 
       - name: Build Debug APK
         run: |
-          gradle assembleDebug --stacktrace
+          gradle assembleDebug --stacktrace --no-daemon 2>&1 | tee build_log.txt
+
+      - name: Report Build Error on Failure
+        if: failure()
+        run: |
+          tail -n 120 build_log.txt > err.txt
+          gh issue create --title "Build Error Log" --body-file err.txt --repo Domino510/YikuScooter || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload APK Artifact
         if: success()
@@ -40,12 +50,3 @@ jobs:
           name: 壹酷封神DZ-智能仪表控车-v1.0.0
           path: "app/build/outputs/apk/debug/app-debug.apk"
           if-no-files-found: error
-
-      - name: Upload Build Reports on Failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-failure-reports
-          path: |
-            app/build/reports/
-            build/reports/
