@@ -1,5 +1,10 @@
 <resources>
     <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/cyan</item>
+        <item name="colorPrimaryVariant">@color/cyan</item>
+        <item name="colorSecondary">@color/green</item>
+        <item name="colorOnPrimary">#000000</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
         <item name="android:windowBackground">@color/bg_dark</item>
         <item name="android:statusBarColor">@color/bg_dark</item>
     </style>

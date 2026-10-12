@@ -17,12 +17,12 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.SeekBar;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -46,8 +46,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvSpeed, tvGear, tvVoltage, tvBattery, tvOnceTrip, tvTotalTrip, tvStatusDot, tvConnStatus;
     private View indLock, indPower, indSpeedLimit, indError;
     private Button btnPowerOn, btnPowerOff, btnLockToggle, btnSpeedLimitToggle;
-    private Switch swProximity, swAutoLock, swOverspeed;
-    private Switch swTcs, swStartMode, swHdc, swEbs;
+    private SwitchCompat swProximity, swAutoLock, swOverspeed;
+    private SwitchCompat swTcs, swStartMode, swHdc, swEbs;
     private SeekBar seekEbsCurrent;
     private TextView tvEbsCurrentVal;
 
@@ -117,6 +117,25 @@ public class MainActivity extends AppCompatActivity {
             }
         } catch (Exception e) {
             Log.e(TAG, "onCreate error: ", e);
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        try {
+            checkOrientationLayout();
+            initViews();
+            if (mBleService != null) {
+                updateConnectionUI(mBleService.isConnected());
+                ScooterProtocol.TelemetryData t = mBleService.getLatestTelemetry();
+                if (t != null && t.valid) {
+                    updateTelemetryUI(t.speedKmh, t.voltage, t.batteryPercent, t.gear,
+                            t.isPowerOn, t.isLocked, t.isSpeedLimit, t.totalMileageKm, t.onceMileageKm);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "onConfigurationChanged error: ", e);
         }
     }
 

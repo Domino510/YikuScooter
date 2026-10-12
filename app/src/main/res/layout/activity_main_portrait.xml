@@ -163,37 +163,41 @@
             android:background="@color/bg_card"
             android:padding="16dp">
 
-            <Switch
+            <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/sw_ecu_tcs"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="TCS 牵引力控制"
                 android:textColor="@color/text_main"
-                android:paddingVertical="8dp" />
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp" />
 
-            <Switch
+            <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/sw_ecu_start_mode"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="启动方式 (软启动 / 硬启动)"
                 android:textColor="@color/text_main"
-                android:paddingVertical="8dp" />
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp" />
 
-            <Switch
+            <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/sw_ecu_hdc"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="陡坡缓降 (HDC) &amp; 坡道驻车"
                 android:textColor="@color/text_main"
-                android:paddingVertical="8dp" />
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp" />
 
-            <Switch
+            <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/sw_ecu_ebs"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="EBS 能量回收制动"
                 android:textColor="@color/text_main"
-                android:paddingVertical="8dp" />
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
