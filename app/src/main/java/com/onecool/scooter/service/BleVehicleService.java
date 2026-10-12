@@ -32,6 +32,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
@@ -39,10 +40,12 @@ import androidx.core.content.ContextCompat;
 import com.onecool.scooter.protocol.ScooterProtocol;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * 壹酷电车后台长连接与无感解锁服务
+ * 壹酷电车后台长连接与智能控车服务
  */
 public class BleVehicleService extends Service {
 
@@ -52,7 +55,14 @@ public class BleVehicleService extends Service {
     public static final String ACTION_STATUS_UPDATED = "com.onecool.scooter.STATUS_UPDATED";
     public static final String ACTION_BLE_STATE_CHANGED = "com.onecool.scooter.BLE_STATE_CHANGED";
 
+    public interface VehicleListener {
+        void onConnectionChanged(boolean connected, int rssi);
+        void onTelemetryUpdated(ScooterProtocol.TelemetryData telemetry);
+    }
+
     private final IBinder mBinder = new LocalBinder();
+    private final List<VehicleListener> mListeners = new CopyOnWriteArrayList<>();
+
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothLeScanner mBleScanner;
     private BluetoothGatt mBluetoothGatt;
@@ -65,7 +75,10 @@ public class BleVehicleService extends Service {
     private byte[] mCurrentM = ScooterProtocol.DEFAULT_M.clone();
 
     private boolean mIsConnected = false;
+    private int mLastRssi = -100;
     private boolean mProximityUnlockEnabled = true;
+    private long mLastProximityTriggerTime = 0;
+
     private ScooterProtocol.TelemetryData mLatestTelemetry = new ScooterProtocol.TelemetryData();
 
     private final Handler mHandler = new Handler(Looper.getMainLooper());
@@ -77,14 +90,27 @@ public class BleVehicleService extends Service {
         }
     }
 
+    public void addListener(VehicleListener listener) {
+        if (!mListeners.contains(listener)) {
+            mListeners.add(listener);
+            listener.onConnectionChanged(mIsConnected, mLastRssi);
+            if (mLatestTelemetry != null && mLatestTelemetry.valid) {
+                listener.onTelemetryUpdated(mLatestTelemetry);
+            }
+        }
+    }
+
+    public void removeListener(VehicleListener listener) {
+        mListeners.remove(listener);
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
 
-        // 尝试启动前台服务 (兼容 Android 14 connectedDevice 类型)
         try {
-            Notification notification = buildNotification("正在监听车机状态...");
+            Notification notification = buildNotification("正在守候车辆连接...");
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(101, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
             } else {
@@ -123,11 +149,11 @@ public class BleVehicleService extends Service {
         return START_STICKY;
     }
 
-    private void startScanForScooter() {
+    public void startScanForScooter() {
         if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-                Log.w(TAG, "缺少 BLUETOOTH_SCAN 权限，暂缓启动蓝牙扫描");
+                Log.w(TAG, "缺少 BLUETOOTH_SCAN 权限");
                 return;
             }
         }
@@ -145,11 +171,11 @@ public class BleVehicleService extends Service {
                     .build();
 
             mBleScanner.startScan(Collections.singletonList(filter), settings, mScanCallback);
-            Log.i(TAG, "开始后台扫描车机广播...");
+            Log.i(TAG, "启动后台广播嗅探 (smart_ebike)...");
         } catch (SecurityException se) {
-            Log.e(TAG, "蓝牙扫描安全权限异常: ", se);
+            Log.e(TAG, "扫描权限受限: ", se);
         } catch (Exception e) {
-            Log.e(TAG, "启动扫描异常: ", e);
+            Log.e(TAG, "扫描启动异常: ", e);
         }
     }
 
@@ -158,33 +184,36 @@ public class BleVehicleService extends Service {
         public void onScanResult(int callbackType, ScanResult result) {
             BluetoothDevice device = result.getDevice();
             ScanRecord record = result.getScanRecord();
+            mLastRssi = result.getRssi();
 
             if (record != null) {
                 byte[] raw = record.getBytes();
-                // 动态提取广播中的 R 和 M 密钥 (厂商自定义数据段)
                 if (raw != null && raw.length >= 13) {
-                    // 从广播帧中提取 4 字节动态滚动 R 码
                     for (int i = 0; i < raw.length - 8; i++) {
-                        if (raw[i] == (byte) 0x55) { // 找到 0x55 标识位
+                        if (raw[i] == (byte) 0x55) {
                             System.arraycopy(raw, i + 1, mCurrentR, 0, 4);
-                            Log.d(TAG, "动态更新车机广播 R 码: " + bytesToHex(mCurrentR));
                             break;
                         }
                     }
                 }
             }
 
-            // 无感靠近开锁逻辑 (RSSI 强度判定)
-            int rssi = result.getRssi();
-            if (mProximityUnlockEnabled && rssi > -70 && !mLatestTelemetry.isPowerOn && mIsConnected) {
-                Log.i(TAG, "检测到靠近车身 (RSSI: " + rssi + " dBm)，执行无感开锁！");
-                sendCommand(ScooterProtocol.CMD_UNLOCK);
-                sendCommand(ScooterProtocol.CMD_POWER_ON);
+            // 无感靠近解锁判定 (防抖 15 秒)
+            long now = System.currentTimeMillis();
+            if (mProximityUnlockEnabled && mLastRssi > -68 && now - mLastProximityTriggerTime > 15000) {
+                if (mIsConnected && !mLatestTelemetry.isPowerOn) {
+                    mLastProximityTriggerTime = now;
+                    Log.i(TAG, "检测到靠近车辆 (RSSI: " + mLastRssi + " dBm)，自动无感解锁并上电！");
+                    sendCommand(ScooterProtocol.CMD_UNLOCK);
+                    mHandler.postDelayed(() -> sendCommand(ScooterProtocol.CMD_POWER_ON), 300);
+                }
             }
 
-            // 若尚未连接，自动发起 GATT 直连
+            // 若尚未建立连接，立即发起直连
             if (!mIsConnected && mBluetoothGatt == null) {
                 connectToDevice(device);
+            } else if (mIsConnected) {
+                dispatchConnectionState();
             }
         }
     };
@@ -193,23 +222,21 @@ public class BleVehicleService extends Service {
         if (device == null) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                Log.w(TAG, "缺少 BLUETOOTH_CONNECT 权限，取消连接");
                 return;
             }
         }
 
         try {
             Log.i(TAG, "正在建立系统级 GATT 通道: " + device.getAddress());
-            // 系统级配对绑定，防止车机报警“滴滴滴”并主动断开
             if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
                 device.createBond();
             }
 
             mBluetoothGatt = device.connectGatt(this, false, mGattCallback, BluetoothDevice.TRANSPORT_LE);
         } catch (SecurityException se) {
-            Log.e(TAG, "建立 GATT 通道权限不足: ", se);
+            Log.e(TAG, "建立 GATT 连接权限不足: ", se);
         } catch (Exception e) {
-            Log.e(TAG, "连接车机设备异常: ", e);
+            Log.e(TAG, "连接车机异常: ", e);
         }
     }
 
@@ -218,22 +245,24 @@ public class BleVehicleService extends Service {
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 mIsConnected = true;
-                Log.i(TAG, "GATT 已连接，开始发现服务...");
+                Log.i(TAG, "GATT 物理连接成功，发现服务中...");
                 updateNotification("车机已连接 (在线)");
+                dispatchConnectionState();
+
                 mHandler.postDelayed(() -> {
                     try {
                         gatt.discoverServices();
                     } catch (SecurityException ignored) {}
-                }, 600);
+                }, 400);
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 mIsConnected = false;
                 mBluetoothGatt = null;
                 mWriteChar = null;
                 mNotifyChar = null;
                 mHandler.removeCallbacks(mHeartbeatRunnable);
-                Log.w(TAG, "GATT 连接已断开，重新启动广播嗅探...");
-                updateNotification("车机已离线，正在监听广播...");
-                broadcastStateChange();
+                Log.w(TAG, "GATT 已断开，重新嗅探广播...");
+                updateNotification("车机已离线，等待靠近...");
+                dispatchConnectionState();
                 startScanForScooter();
             }
         }
@@ -246,43 +275,69 @@ public class BleVehicleService extends Service {
                     mWriteChar = service.getCharacteristic(UUID.fromString(ScooterProtocol.WRITE_CHAR_UUID));
                     mNotifyChar = service.getCharacteristic(UUID.fromString(ScooterProtocol.NOTIFY_CHAR_UUID));
 
-                    // 开启状态监听 Notify
+                    // 开启车机 Notify 监听
                     if (mNotifyChar != null) {
                         try {
                             gatt.setCharacteristicNotification(mNotifyChar, true);
                             BluetoothGattDescriptor descriptor = mNotifyChar.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"));
                             if (descriptor != null) {
-                                descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                                gatt.writeDescriptor(descriptor);
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                                } else {
+                                    descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                                    gatt.writeDescriptor(descriptor);
+                                }
                             }
                         } catch (SecurityException se) {
-                            Log.e(TAG, "开启通知权限不足: ", se);
+                            Log.e(TAG, "Notify 监听权限异常: ", se);
                         }
                     }
-
-                    // 协商 MTU 为 30
-                    try {
-                        gatt.requestMtu(30);
-                    } catch (SecurityException ignored) {}
-
-                    // 启动每秒心跳拉取遥测
-                    mHandler.post(mHeartbeatRunnable);
-                    broadcastStateChange();
                 }
             }
         }
 
         @Override
+        public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+            super.onDescriptorWrite(gatt, descriptor, status);
+            Log.i(TAG, "Notify 描述符配置完成，状态: " + status);
+            // 此时已握手完成，立即协商 MTU 并启动心跳轮询
+            try {
+                gatt.requestMtu(30);
+            } catch (SecurityException ignored) {}
+
+            mHandler.post(mHeartbeatRunnable);
+            dispatchConnectionState();
+        }
+
+        // 兼容 Android 12 及以下
+        @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            byte[] val = characteristic.getValue();
-            if (val != null) {
-                mLatestTelemetry = ScooterProtocol.parseTelemetry(val);
-                if (mLatestTelemetry.valid) {
-                    broadcastTelemetry();
-                }
+            super.onCharacteristicChanged(gatt, characteristic);
+            if (characteristic != null) {
+                handleIncomingBytes(characteristic.getValue());
             }
         }
+
+        // 兼容 Android 13+ (API 33+)
+        @Override
+        public void onCharacteristicChanged(@NonNull BluetoothGatt gatt, @NonNull BluetoothGattCharacteristic characteristic, @NonNull byte[] value) {
+            super.onCharacteristicChanged(gatt, characteristic, value);
+            handleIncomingBytes(value);
+        }
     };
+
+    private void handleIncomingBytes(byte[] val) {
+        if (val != null && val.length >= 23) {
+            ScooterProtocol.TelemetryData t = ScooterProtocol.parseTelemetry(val);
+            if (t.valid) {
+                mLatestTelemetry = t;
+                for (VehicleListener l : mListeners) {
+                    l.onTelemetryUpdated(mLatestTelemetry);
+                }
+                broadcastTelemetry();
+            }
+        }
+    }
 
     /**
      * 发送功能指令
@@ -309,7 +364,7 @@ public class BleVehicleService extends Service {
             mWriteChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
             return mBluetoothGatt.writeCharacteristic(mWriteChar);
         } catch (SecurityException se) {
-            Log.e(TAG, "写入指令权限不足: ", se);
+            Log.e(TAG, "发送指令权限异常: ", se);
             return false;
         }
     }
@@ -322,13 +377,30 @@ public class BleVehicleService extends Service {
         return mIsConnected;
     }
 
+    public int getLastRssi() {
+        return mLastRssi;
+    }
+
     public void setProximityUnlockEnabled(boolean enabled) {
         this.mProximityUnlockEnabled = enabled;
+    }
+
+    public boolean isProximityUnlockEnabled() {
+        return mProximityUnlockEnabled;
+    }
+
+    private void dispatchConnectionState() {
+        for (VehicleListener l : mListeners) {
+            l.onConnectionChanged(mIsConnected, mLastRssi);
+        }
+        broadcastStateChange();
     }
 
     private void broadcastStateChange() {
         Intent intent = new Intent(ACTION_BLE_STATE_CHANGED);
         intent.putExtra("connected", mIsConnected);
+        intent.putExtra("rssi", mLastRssi);
+        intent.setPackage(getPackageName()); // Android 14 必需声明 package 否则静默丢弃
         sendBroadcast(intent);
     }
 
@@ -343,12 +415,15 @@ public class BleVehicleService extends Service {
         intent.putExtra("speedLimit", mLatestTelemetry.isSpeedLimit);
         intent.putExtra("totalMileage", mLatestTelemetry.totalMileageKm);
         intent.putExtra("onceMileage", mLatestTelemetry.onceMileageKm);
+        intent.putExtra("errorMsg", mLatestTelemetry.errorMsg);
+        intent.putExtra("errorCode", mLatestTelemetry.errorCode);
+        intent.setPackage(getPackageName()); // Android 14 必需声明 package
         sendBroadcast(intent);
     }
 
     private Notification buildNotification(String text) {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("壹酷 封神DZ 智能伴侣")
+                .setContentTitle("壹酷 封神DZ 智能管家")
                 .setContentText(text)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -366,7 +441,7 @@ public class BleVehicleService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "壹酷电车后台服务",
+                    "壹酷电车服务通道",
                     NotificationManager.IMPORTANCE_LOW
             );
             NotificationManager nm = getSystemService(NotificationManager.class);

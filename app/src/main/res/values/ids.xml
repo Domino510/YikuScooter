@@ -1,5 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <item name="tv_speed" type="id" />
+    <item name="tv_gear" type="id" />
+    <item name="tv_voltage" type="id" />
+    <item name="tv_battery" type="id" />
+    <item name="tv_once_trip" type="id" />
     <item name="tv_total_trip" type="id" />
-    <item name="ind_error" type="id" />
+    <item name="tv_conn_status" type="id" />
+    <item name="tv_status_dot" type="id" />
+    <item name="tv_device_sub" type="id" />
+    <item name="tv_error_status" type="id" />
+    <item name="badge_limit_status" type="id" />
+    <item name="layout_conn_badge" type="id" />
+    <item name="btn_power_on" type="id" />
+    <item name="btn_power_off" type="id" />
+    <item name="btn_lock_toggle" type="id" />
+    <item name="btn_speed_limit_toggle" type="id" />
+    <item name="btn_seek_vehicle" type="id" />
+    <item name="sw_proximity_unlock" type="id" />
+    <item name="sw_auto_lock" type="id" />
+    <item name="sw_overspeed_tip" type="id" />
+    <item name="seek_distance_level" type="id" />
+    <item name="tv_distance_val" type="id" />
+    <item name="seek_sensitivity_level" type="id" />
+    <item name="tv_sensitivity_val" type="id" />
+    <item name="sw_ecu_tcs" type="id" />
+    <item name="sw_ecu_start_mode" type="id" />
+    <item name="sw_ecu_hdc" type="id" />
+    <item name="sw_ecu_assist" type="id" />
+    <item name="sw_ecu_p_gear" type="id" />
+    <item name="sw_ecu_ebs" type="id" />
+    <item name="seek_ebs_current" type="id" />
+    <item name="tv_ebs_current_val" type="id" />
+    <item name="btn_apply_ecu" type="id" />
+    <item name="btn_volt_48v" type="id" />
+    <item name="btn_volt_60v" type="id" />
+    <item name="btn_volt_72v" type="id" />
 </resources>

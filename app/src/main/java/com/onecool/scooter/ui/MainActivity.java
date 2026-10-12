@@ -31,7 +31,7 @@ import com.onecool.scooter.protocol.ScooterProtocol;
 import com.onecool.scooter.service.BleVehicleService;
 
 /**
- * 壹酷 封神DZ 主交互界面（支持横屏HUD赛道仪表 / 竖屏极客控制台）
+ * 壹酷 封神DZ 极客智能座舱主控台
  */
 public class MainActivity extends AppCompatActivity {
 
@@ -42,17 +42,43 @@ public class MainActivity extends AppCompatActivity {
     private boolean mIsBound = false;
     private boolean mIsReceiverRegistered = false;
 
-    // UI 组件
-    private TextView tvSpeed, tvGear, tvVoltage, tvBattery, tvOnceTrip, tvTotalTrip, tvStatusDot, tvConnStatus;
-    private View indLock, indPower, indSpeedLimit, indError;
-    private Button btnPowerOn, btnPowerOff, btnLockToggle, btnSpeedLimitToggle;
-    private SwitchCompat swProximity, swAutoLock, swOverspeed;
-    private SwitchCompat swTcs, swStartMode, swHdc, swEbs;
+    // 顶部连接与状态
+    private TextView tvStatusDot, tvConnStatus, tvDeviceSub;
+
+    // 核心行车仪表数据
+    private TextView tvSpeed, tvGear, tvVoltage, tvBattery, tvOnceTrip, tvTotalTrip, tvErrorStatus, badgeLimitStatus;
+
+    // 核心控车按钮
+    private Button btnPowerOn, btnPowerOff, btnLockToggle, btnSpeedLimitToggle, btnSeekVehicle;
+
+    // 智能近场与安防
+    private SwitchCompat swProximityUnlock, swAutoLock, swOverspeedTip;
+    private SeekBar seekDistanceLevel, seekSensitivityLevel;
+    private TextView tvDistanceVal, tvSensitivityVal;
+
+    // 控制器 ECU 调教
+    private SwitchCompat swEcuTcs, swEcuStartMode, swEcuHdc, swEcuAssist, swEcuPGear, swEcuEbs;
     private SeekBar seekEbsCurrent;
     private TextView tvEbsCurrentVal;
+    private Button btnApplyEcu;
+
+    // 电池校准
+    private Button btnVolt48v, btnVolt60v, btnVolt72v;
 
     private int mEcuConfig = 6450;
     private int mEbsCurrent = 128;
+
+    private final BleVehicleService.VehicleListener mVehicleListener = new BleVehicleService.VehicleListener() {
+        @Override
+        public void onConnectionChanged(boolean connected, int rssi) {
+            runOnUiThread(() -> updateConnectionUI(connected, rssi));
+        }
+
+        @Override
+        public void onTelemetryUpdated(ScooterProtocol.TelemetryData telemetry) {
+            runOnUiThread(() -> updateTelemetryUI(telemetry));
+        }
+    };
 
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
         @Override
@@ -60,14 +86,22 @@ public class MainActivity extends AppCompatActivity {
             BleVehicleService.LocalBinder binder = (BleVehicleService.LocalBinder) service;
             mBleService = binder.getService();
             mIsBound = true;
-            updateConnectionUI(mBleService.isConnected());
+            mBleService.addListener(mVehicleListener);
+            updateConnectionUI(mBleService.isConnected(), mBleService.getLastRssi());
+            ScooterProtocol.TelemetryData t = mBleService.getLatestTelemetry();
+            if (t != null && t.valid) {
+                updateTelemetryUI(t);
+            }
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            if (mBleService != null) {
+                mBleService.removeListener(mVehicleListener);
+            }
             mBleService = null;
             mIsBound = false;
-            updateConnectionUI(false);
+            updateConnectionUI(false, -100);
         }
     };
 
@@ -77,20 +111,13 @@ public class MainActivity extends AppCompatActivity {
             if (intent == null) return;
             String action = intent.getAction();
             if (BleVehicleService.ACTION_STATUS_UPDATED.equals(action)) {
-                int speed = intent.getIntExtra("speed", 0);
-                float voltage = intent.getFloatExtra("voltage", 0.0f);
-                int battery = intent.getIntExtra("battery", 0);
-                int gear = intent.getIntExtra("gear", 1);
-                boolean powerOn = intent.getBooleanExtra("powerOn", false);
-                boolean locked = intent.getBooleanExtra("locked", false);
-                boolean speedLimit = intent.getBooleanExtra("speedLimit", false);
-                int totalKm = intent.getIntExtra("totalMileage", 0);
-                float onceKm = intent.getFloatExtra("onceMileage", 0.0f);
-
-                updateTelemetryUI(speed, voltage, battery, gear, powerOn, locked, speedLimit, totalKm, onceKm);
+                if (mBleService != null) {
+                    updateTelemetryUI(mBleService.getLatestTelemetry());
+                }
             } else if (BleVehicleService.ACTION_BLE_STATE_CHANGED.equals(action)) {
                 boolean connected = intent.getBooleanExtra("connected", false);
-                updateConnectionUI(connected);
+                int rssi = intent.getIntExtra("rssi", -100);
+                updateConnectionUI(connected, rssi);
             }
         }
     };
@@ -100,16 +127,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         try {
-            // 保持屏幕常亮
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-            // 检查横竖屏加载对应布局
             checkOrientationLayout();
-
             initViews();
             registerStatusReceiver();
 
-            // 权限检查：授予权限后再启动蓝牙后台服务，避免 Android 14+ 触发 SecurityException 闪退
             if (hasRequiredPermissions()) {
                 startVehicleService();
             } else {
@@ -127,11 +149,10 @@ public class MainActivity extends AppCompatActivity {
             checkOrientationLayout();
             initViews();
             if (mBleService != null) {
-                updateConnectionUI(mBleService.isConnected());
+                updateConnectionUI(mBleService.isConnected(), mBleService.getLastRssi());
                 ScooterProtocol.TelemetryData t = mBleService.getLatestTelemetry();
                 if (t != null && t.valid) {
-                    updateTelemetryUI(t.speedKmh, t.voltage, t.batteryPercent, t.gear,
-                            t.isPowerOn, t.isLocked, t.isSpeedLimit, t.totalMileageKm, t.onceMileageKm);
+                    updateTelemetryUI(t);
                 }
             }
         } catch (Exception e) {
@@ -141,58 +162,135 @@ public class MainActivity extends AppCompatActivity {
 
     private void checkOrientationLayout() {
         if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            setContentView(R.layout.activity_main_hud); // 横屏专用 HUD 赛道表盘
+            setContentView(R.layout.activity_main_hud);
         } else {
-            setContentView(R.layout.activity_main_portrait); // 竖屏全功能控制台
+            setContentView(R.layout.activity_main_portrait);
         }
     }
 
     private void initViews() {
+        // 顶部状态栏
+        tvStatusDot = findViewById(R.id.tv_status_dot);
+        tvConnStatus = findViewById(R.id.tv_conn_status);
+        tvDeviceSub = findViewById(R.id.tv_device_sub);
+
+        // 仪表盘
         tvSpeed = findViewById(R.id.tv_speed);
         tvGear = findViewById(R.id.tv_gear);
         tvVoltage = findViewById(R.id.tv_voltage);
         tvBattery = findViewById(R.id.tv_battery);
         tvOnceTrip = findViewById(R.id.tv_once_trip);
         tvTotalTrip = findViewById(R.id.tv_total_trip);
-        tvConnStatus = findViewById(R.id.tv_conn_status);
-        tvStatusDot = findViewById(R.id.tv_status_dot);
+        tvErrorStatus = findViewById(R.id.tv_error_status);
+        badgeLimitStatus = findViewById(R.id.badge_limit_status);
 
-        indLock = findViewById(R.id.ind_lock);
-        indPower = findViewById(R.id.ind_power);
-        indSpeedLimit = findViewById(R.id.ind_speed_limit);
-        indError = findViewById(R.id.ind_error);
-
+        // 核心控车按钮
         btnPowerOn = findViewById(R.id.btn_power_on);
         btnPowerOff = findViewById(R.id.btn_power_off);
         btnLockToggle = findViewById(R.id.btn_lock_toggle);
         btnSpeedLimitToggle = findViewById(R.id.btn_speed_limit_toggle);
+        btnSeekVehicle = findViewById(R.id.btn_seek_vehicle);
 
         if (btnPowerOn != null) {
-            btnPowerOn.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_POWER_ON));
+            btnPowerOn.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_POWER_ON, "电门上电"));
         }
         if (btnPowerOff != null) {
-            btnPowerOff.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_POWER_OFF));
+            btnPowerOff.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_POWER_OFF, "电门断电"));
         }
         if (btnLockToggle != null) {
             btnLockToggle.setOnClickListener(v -> {
                 boolean isLocked = (mBleService != null && mBleService.getLatestTelemetry().isLocked);
-                sendCommand(isLocked ? ScooterProtocol.CMD_UNLOCK : ScooterProtocol.CMD_LOCK);
+                int cmd = isLocked ? ScooterProtocol.CMD_UNLOCK : ScooterProtocol.CMD_LOCK;
+                sendCommand(cmd, isLocked ? "撤防解锁" : "设防闭锁");
             });
         }
         if (btnSpeedLimitToggle != null) {
             btnSpeedLimitToggle.setOnClickListener(v -> {
                 boolean isLimit = (mBleService != null && mBleService.getLatestTelemetry().isSpeedLimit);
-                sendCommand(isLimit ? ScooterProtocol.CMD_SPEED_LIMIT_OFF : ScooterProtocol.CMD_SPEED_LIMIT_ON);
+                int cmd = isLimit ? ScooterProtocol.CMD_SPEED_LIMIT_OFF : ScooterProtocol.CMD_SPEED_LIMIT_ON;
+                sendCommand(cmd, isLimit ? "极速解除" : "恢复限速");
+            });
+        }
+        if (btnSeekVehicle != null) {
+            btnSeekVehicle.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_MUTE, "寻车鸣笛"));
+        }
+
+        // 智能近场与安防
+        swProximityUnlock = findViewById(R.id.sw_proximity_unlock);
+        swAutoLock = findViewById(R.id.sw_auto_lock);
+        swOverspeedTip = findViewById(R.id.sw_overspeed_tip);
+        seekDistanceLevel = findViewById(R.id.seek_distance_level);
+        tvDistanceVal = findViewById(R.id.tv_distance_val);
+        seekSensitivityLevel = findViewById(R.id.seek_sensitivity_level);
+        tvSensitivityVal = findViewById(R.id.tv_sensitivity_val);
+
+        if (swProximityUnlock != null) {
+            if (mBleService != null) {
+                swProximityUnlock.setChecked(mBleService.isProximityUnlockEnabled());
+            }
+            swProximityUnlock.setOnCheckedChangeListener((btn, isChecked) -> {
+                if (mBleService != null) {
+                    mBleService.setProximityUnlockEnabled(isChecked);
+                }
+                sendCommand(isChecked ? ScooterProtocol.CMD_GANYING_ON : ScooterProtocol.CMD_GANYING_OFF,
+                        isChecked ? "开启无感感应" : "关闭无感感应");
             });
         }
 
-        // ECU 调参绑定
-        swTcs = findViewById(R.id.sw_ecu_tcs);
-        swStartMode = findViewById(R.id.sw_ecu_start_mode);
-        swHdc = findViewById(R.id.sw_ecu_hdc);
-        swEbs = findViewById(R.id.sw_ecu_ebs);
+        if (swAutoLock != null) {
+            swAutoLock.setOnCheckedChangeListener((btn, isChecked) -> {
+                sendCommand(isChecked ? ScooterProtocol.CMD_AUTO_LOCK_ON : ScooterProtocol.CMD_AUTO_LOCK_OFF,
+                        isChecked ? "开启离车自动设防" : "关闭离车自动设防");
+            });
+        }
+
+        if (swOverspeedTip != null) {
+            swOverspeedTip.setOnCheckedChangeListener((btn, isChecked) -> {
+                sendCommand(isChecked ? ScooterProtocol.CMD_CHAOSU_ON : ScooterProtocol.CMD_CHAOSU_OFF,
+                        isChecked ? "开启超速警示音" : "关闭超速警示音");
+            });
+        }
+
+        if (seekDistanceLevel != null) {
+            seekDistanceLevel.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    int level = progress + 1; // 1~7
+                    if (tvDistanceVal != null) tvDistanceVal.setText(level + " 档");
+                    if (fromUser) {
+                        sendCommand(ScooterProtocol.CMD_DISTANCE_BASE + level, "调节感应距离至 " + level + " 档");
+                    }
+                }
+                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            });
+        }
+
+        if (seekSensitivityLevel != null) {
+            seekSensitivityLevel.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    int level = progress + 1; // 1~4
+                    if (tvSensitivityVal != null) tvSensitivityVal.setText(level + " 级");
+                    if (fromUser) {
+                        sendCommand(ScooterProtocol.CMD_SENSITIVITY_BASE + level, "调节报警灵敏度至 " + level + " 级");
+                    }
+                }
+                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            });
+        }
+
+        // ECU 控制器调参
+        swEcuTcs = findViewById(R.id.sw_ecu_tcs);
+        swEcuStartMode = findViewById(R.id.sw_ecu_start_mode);
+        swEcuHdc = findViewById(R.id.sw_ecu_hdc);
+        swEcuAssist = findViewById(R.id.sw_ecu_assist);
+        swEcuPGear = findViewById(R.id.sw_ecu_p_gear);
+        swEcuEbs = findViewById(R.id.sw_ecu_ebs);
         seekEbsCurrent = findViewById(R.id.seek_ebs_current);
         tvEbsCurrentVal = findViewById(R.id.tv_ebs_current_val);
+        btnApplyEcu = findViewById(R.id.btn_apply_ecu);
 
         if (seekEbsCurrent != null) {
             seekEbsCurrent.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -206,10 +304,18 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        Button btnApplyEcu = findViewById(R.id.btn_apply_ecu);
         if (btnApplyEcu != null) {
             btnApplyEcu.setOnClickListener(v -> applyEcuConfig());
         }
+
+        // 电池电压校准
+        btnVolt48v = findViewById(R.id.btn_volt_48v);
+        btnVolt60v = findViewById(R.id.btn_volt_60v);
+        btnVolt72v = findViewById(R.id.btn_volt_72v);
+
+        if (btnVolt48v != null) btnVolt48v.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_VOLTAGE_48V, "校准标称电压 48V"));
+        if (btnVolt60v != null) btnVolt60v.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_VOLTAGE_60V, "校准标称电压 60V (封神DZ加长锂电)"));
+        if (btnVolt72v != null) btnVolt72v.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_VOLTAGE_72V, "校准标称电压 72V"));
     }
 
     private void registerStatusReceiver() {
@@ -219,7 +325,6 @@ public class MainActivity extends AppCompatActivity {
             filter.addAction(BleVehicleService.ACTION_STATUS_UPDATED);
             filter.addAction(BleVehicleService.ACTION_BLE_STATE_CHANGED);
 
-            // Android 14 (API 34) 严格要求指定 RECEIVER_NOT_EXPORTED，否则抛出 SecurityException 导致启动即闪退
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 registerReceiver(mStatusReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
             } else {
@@ -227,7 +332,7 @@ public class MainActivity extends AppCompatActivity {
             }
             mIsReceiverRegistered = true;
         } catch (Exception e) {
-            Log.e(TAG, "registerReceiver failed", e);
+            Log.e(TAG, "registerReceiver error", e);
         }
     }
 
@@ -260,7 +365,7 @@ public class MainActivity extends AppCompatActivity {
             if (hasRequiredPermissions()) {
                 startVehicleService();
             } else {
-                Toast.makeText(this, "请授予蓝牙与位置权限以连接车机", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "需开启蓝牙权限以连接车辆中控", Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -275,60 +380,125 @@ public class MainActivity extends AppCompatActivity {
             }
             bindService(serviceIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
         } catch (Exception e) {
-            Log.e(TAG, "startVehicleService failed: ", e);
+            Log.e(TAG, "startVehicleService error", e);
         }
     }
 
-    private void sendCommand(int cmd) {
+    private void sendCommand(int cmd, String actionName) {
         if (mBleService != null && mBleService.isConnected()) {
-            boolean success = mBleService.sendCommand(cmd);
-            if (!success) {
-                Toast.makeText(this, "指令发送失败，正在重试连接...", Toast.LENGTH_SHORT).show();
+            boolean ok = mBleService.sendCommand(cmd);
+            if (ok) {
+                Toast.makeText(this, "指令已下发: " + actionName, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "指令发送失败，正在重试通道...", Toast.LENGTH_SHORT).show();
             }
         } else {
-            Toast.makeText(this, "车机未连接，请靠近车辆", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "车机未连接，正在扫描中...", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void applyEcuConfig() {
         if (mBleService == null || !mBleService.isConnected()) {
-            Toast.makeText(this, "车机未连接，无法下发ECU参数", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "车机未建立连接，无法写入ECU", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 重新计算掩码
-        if (swTcs != null && swTcs.isChecked()) mEcuConfig |= (1 << 2); else mEcuConfig &= ~(1 << 2);
-        if (swStartMode != null && swStartMode.isChecked()) mEcuConfig |= (1 << 4); else mEcuConfig &= ~(1 << 4);
-        if (swHdc != null && swHdc.isChecked()) { mEcuConfig |= (1 << 0); mEcuConfig |= (1 << 1); }
-        else { mEcuConfig &= ~(1 << 0); mEcuConfig &= ~(1 << 1); }
-        if (swEbs != null && swEbs.isChecked()) mEcuConfig |= (1 << 13); else mEcuConfig &= ~(1 << 13);
+        mEcuConfig = 0;
+        if (swEcuHdc != null && swEcuHdc.isChecked()) {
+            mEcuConfig |= (1 << 0); // 陡坡缓降
+            mEcuConfig |= (1 << 1); // 坡道驻车
+        }
+        if (swEcuTcs != null && swEcuTcs.isChecked()) {
+            mEcuConfig |= (1 << 2); // TCS 防滑
+        }
+        if (swEcuAssist != null && swEcuAssist.isChecked()) {
+            mEcuConfig |= (1 << 3); // 推行/倒车辅助
+        }
+        if (swEcuStartMode != null && swEcuStartMode.isChecked()) {
+            mEcuConfig |= (1 << 4); // 硬启动
+        }
+        if (swEcuPGear != null && swEcuPGear.isChecked()) {
+            mEcuConfig |= (1 << 5); // P档保护
+        }
+        if (swEcuEbs != null && swEcuEbs.isChecked()) {
+            mEcuConfig |= (1 << 13); // 动能回收
+        }
 
-        // 下发常规位与高级位
         mBleService.sendCommand(ScooterProtocol.CMD_ECU_CONFIG_LOW, mEcuConfig & 0xFF, 0);
         mBleService.sendCommand(ScooterProtocol.CMD_ECU_CONFIG_HIGH, (mEcuConfig >> 8) & 0xFF, 0);
         mBleService.sendCommand(ScooterProtocol.CMD_ECU_CURRENT, mEbsCurrent, 255 - mEbsCurrent);
 
-        Toast.makeText(this, "ECU 高级参数已成功同步至控制器！", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "ECU 动力调教参数已同步！", Toast.LENGTH_SHORT).show();
     }
 
-    private void updateConnectionUI(boolean connected) {
-        if (tvConnStatus != null) tvConnStatus.setText(connected ? "已连接" : "等待连接...");
-        if (tvStatusDot != null) tvStatusDot.setTextColor(connected ? 0xFF10B981 : 0xFFEF4444);
+    private void updateConnectionUI(boolean connected, int rssi) {
+        if (tvStatusDot != null) {
+            tvStatusDot.setTextColor(connected ? 0xFF00E676 : 0xFFFF3D00);
+        }
+        if (tvConnStatus != null) {
+            if (connected) {
+                String rssiStr = (rssi > -100 && rssi < 0) ? (" (" + rssi + " dBm)") : "";
+                tvConnStatus.setText("已连接" + rssiStr);
+                tvConnStatus.setTextColor(0xFF00E676);
+            } else {
+                tvConnStatus.setText("未连接 (靠近自动连接)");
+                tvConnStatus.setTextColor(0xFF94A3B8);
+            }
+        }
     }
 
-    private void updateTelemetryUI(int speed, float voltage, int battery, int gear,
-                                   boolean powerOn, boolean locked, boolean speedLimit,
-                                   int totalKm, float onceKm) {
-        if (tvSpeed != null) tvSpeed.setText(String.valueOf(speed));
-        if (tvVoltage != null) tvVoltage.setText(String.format("%.1f", voltage));
-        if (tvBattery != null) tvBattery.setText(String.valueOf(battery));
-        if (tvGear != null) tvGear.setText(gear == 0 ? "P" : String.valueOf(gear));
-        if (tvOnceTrip != null) tvOnceTrip.setText(String.format("%.1f", onceKm));
-        if (tvTotalTrip != null) tvTotalTrip.setText(String.valueOf(totalKm));
+    private void updateTelemetryUI(ScooterProtocol.TelemetryData t) {
+        if (t == null || !t.valid) return;
 
-        if (indPower != null) indPower.setSelected(powerOn);
-        if (indLock != null) indLock.setSelected(locked);
-        if (indSpeedLimit != null) indSpeedLimit.setSelected(speedLimit);
+        // 速度与档位
+        if (tvSpeed != null) tvSpeed.setText(String.valueOf(t.speedKmh));
+        if (tvGear != null) {
+            if (t.isPShow || t.gear == 0) {
+                tvGear.setText("P 驻车");
+                tvGear.setTextColor(0xFFFFB300);
+            } else {
+                tvGear.setText("D" + t.gear + " 档");
+                tvGear.setTextColor(0xFF00E5FF);
+            }
+        }
+
+        // 电压与电量
+        if (tvVoltage != null) tvVoltage.setText(String.format("%.1f V", t.voltage));
+        if (tvBattery != null) tvBattery.setText(t.batteryPercent + " %");
+
+        // 里程
+        if (tvOnceTrip != null) tvOnceTrip.setText(String.format("%.1f km", t.onceMileageKm));
+        if (tvTotalTrip != null) tvTotalTrip.setText(t.totalMileageKm + " km");
+
+        // 故障自检与限速状态
+        if (tvErrorStatus != null) {
+            if (t.errorCode == 0) {
+                tvErrorStatus.setText("🛡️ 整车自检正常 · 无故障码");
+                tvErrorStatus.setTextColor(0xFF00E676);
+            } else {
+                tvErrorStatus.setText("⚠️ 故障告警: " + t.errorMsg);
+                tvErrorStatus.setTextColor(0xFFFF3D00);
+            }
+        }
+
+        if (badgeLimitStatus != null) {
+            if (t.isSpeedLimit) {
+                badgeLimitStatus.setText("25km/h 限速");
+                badgeLimitStatus.setTextColor(0xFFFFB300);
+            } else {
+                badgeLimitStatus.setText("🚀 极速解除");
+                badgeLimitStatus.setTextColor(0xFF00E5FF);
+            }
+        }
+
+        // 按钮文本动态同步
+        if (btnLockToggle != null) {
+            btnLockToggle.setText(t.isLocked ? "🔓 撤防解锁" : "🔒 设防闭锁");
+            btnLockToggle.setBackgroundTintList(ContextCompat.getColorStateList(this, t.isLocked ? R.color.cyan : R.color.amber));
+        }
+        if (btnSpeedLimitToggle != null) {
+            btnSpeedLimitToggle.setText(t.isSpeedLimit ? "🚀 解除限速" : "⏱ 恢复限速");
+        }
     }
 
     @Override
@@ -342,6 +512,9 @@ public class MainActivity extends AppCompatActivity {
         }
         if (mIsBound) {
             try {
+                if (mBleService != null) {
+                    mBleService.removeListener(mVehicleListener);
+                }
                 unbindService(mServiceConnection);
             } catch (Exception ignored) {}
             mIsBound = false;

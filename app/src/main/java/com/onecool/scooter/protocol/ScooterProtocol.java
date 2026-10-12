@@ -1,7 +1,5 @@
 package com.onecool.scooter.protocol;
 
-import java.util.Arrays;
-
 /**
  * 壹酷 封神DZ / 易骑 RLA2 中控全功能底层协议编解码引擎
  */
@@ -11,15 +9,17 @@ public class ScooterProtocol {
     public static final String WRITE_CHAR_UUID = "86912002-B5A3-F393-E0A9-E50E24DCCA9E";
     public static final String NOTIFY_CHAR_UUID = "86912003-B5A3-F393-E0A9-E50E24DCCA9E";
 
-    // 常用指令码
-    public static final int CMD_LOCK = 1;              // 设防
-    public static final int CMD_UNLOCK = 2;            // 撤防
+    // 核心控车指令
+    public static final int CMD_LOCK = 1;              // 设防上锁
+    public static final int CMD_UNLOCK = 2;            // 撤防解锁
     public static final int CMD_POWER_ON = 3;          // 上电开机
     public static final int CMD_POWER_OFF = 4;         // 断电关机
-    public static final int CMD_MUTE = 6;              // 静音设防/寻车
+    public static final int CMD_MUTE = 6;              // 寻车鸣笛 / 静音设防
     public static final int CMD_OPEN_CUSHION = 7;      // 开座垫锁
     public static final int CMD_SPEED_LIMIT_OFF = 8;   // 解除限速 (25km/h)
-    public static final int CMD_SPEED_LIMIT_ON = 9;    // 开启限速 (25km/h)
+    public static final int CMD_SPEED_LIMIT_ON = 9;    // 恢复限速 (25km/h)
+
+    // 智能近场与安防功能指令
     public static final int CMD_GANYING_ON = 32;       // 距离感应开
     public static final int CMD_GANYING_OFF = 33;      // 距离感应关
     public static final int CMD_CHAOSU_ON = 34;        // 超速鸣笛提示开
@@ -28,7 +28,22 @@ public class ScooterProtocol {
     public static final int CMD_AUTO_LOCK_OFF = 39;    // 自动设防关
     public static final int CMD_HEARTBEAT = 85;        // 心跳轮询 (0x55)
 
-    // ECU 指令
+    // 防盗灵敏度 1~4 级 (CMD 17~20)
+    public static final int CMD_SENSITIVITY_BASE = 16; // 加上 1~4 级
+
+    // 系统标称电压校准 (CMD 48~55)
+    public static final int CMD_VOLTAGE_36V = 48;
+    public static final int CMD_VOLTAGE_48V = 49;
+    public static final int CMD_VOLTAGE_60V = 50;     // 封神DZ 加长锂电标称
+    public static final int CMD_VOLTAGE_64V = 51;
+    public static final int CMD_VOLTAGE_72V = 52;
+    public static final int CMD_VOLTAGE_84V = 54;
+    public static final int CMD_VOLTAGE_96V = 55;
+
+    // 感应距离档位 1~7 级 (CMD 65~71)
+    public static final int CMD_DISTANCE_BASE = 64;   // 加上 1~7 级
+
+    // ECU 控制器调参指令 (免密)
     public static final int CMD_ECU_CURRENT = 253;     // 调节动能回收制动力矩 (1~255)
     public static final int CMD_ECU_CONFIG_HIGH = 254; // 发送高级配置高字节
     public static final int CMD_ECU_CONFIG_LOW = 255;  // 发送常规配置低字节
@@ -89,17 +104,19 @@ public class ScooterProtocol {
      */
     public static class TelemetryData {
         public boolean valid = false;
-        public int state = 0;             // 1: 设防, 2: 解防, 3: 上电, 4: 报警
+        public int state = 0;             // 1: 设防, 2: 解防, 3: 上电, 4: 报警, 5: 静音设防
         public boolean isPowerOn = false;
         public boolean isLocked = false;
         public boolean isPShow = false;
         public boolean isSpeedLimit = false;
         public boolean isAutoLock = false;
         public boolean isOverspeedTips = false;
+        public boolean isProximitySensorOn = false;
         public int errorCode = 0;
-        public String errorMsg = "无故障";
+        public String errorMsg = "系统正常";
         public int gear = 1;
-        public int sensitivity = 17;
+        public int sensitivity = 2;       // 1~4
+        public int distanceLevel = 4;      // 1~7
         public int totalMileageKm = 0;
         public float onceMileageKm = 0.0f;
         public int speedKmh = 0;
@@ -133,9 +150,10 @@ public class ScooterProtocol {
         t.valid = true;
         t.state = data[9] & 0xFF;
         t.isPowerOn = (t.state == 3);
-        t.isLocked = (t.state == 1);
+        t.isLocked = (t.state == 1 || t.state == 5);
 
         int flags = data[10] & 0xFF;
+        t.isProximitySensorOn = (flags & 1) == 1;
         t.isPShow = (flags & 2) == 2;
         t.isSpeedLimit = (flags & 4) == 4;
         t.isAutoLock = (flags & 16) == 16;
@@ -143,7 +161,7 @@ public class ScooterProtocol {
 
         t.errorCode = data[11] & 0xFF;
         if (t.errorCode == 0) {
-            t.errorMsg = "无故障";
+            t.errorMsg = "系统正常";
         } else {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < 8; i++) {
@@ -155,13 +173,19 @@ public class ScooterProtocol {
         }
 
         t.gear = data[12] & 7;
-        t.sensitivity = ((data[12] >> 4) & 7) + 16;
+        t.sensitivity = Math.max(1, Math.min(4, ((data[12] >> 4) & 7)));
 
         t.totalMileageKm = ((data[13] & 0xFF) << 16) | ((data[14] & 0xFF) << 8) | (data[15] & 0xFF);
         t.onceMileageKm = (data[16] & 0xFF) + 0.1f * (data[17] & 0xFF);
         t.speedKmh = data[18] & 0xFF;
         t.batteryPercent = data[19] & 0xFF;
         t.voltage = (data[20] & 0xFF) + 0.1f * (data[21] & 0xFF);
+
+        if (data.length >= 24) {
+            int sv = data[22] & 0xFF;
+            if (sv >= 36 && sv <= 96) t.sysVoltage = sv;
+            t.distanceLevel = Math.max(1, Math.min(7, (data[23] & 0x0F)));
+        }
 
         return t;
     }

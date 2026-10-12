@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg_dark">#0A0D14</color>
-    <color name="bg_card">#131722</color>
-    <color name="cyan">#00F2FE</color>
-    <color name="green">#10B981</color>
-    <color name="amber">#F59E0B</color>
-    <color name="red">#EF4444</color>
-    <color name="purple">#8B5CF6</color>
-    <color name="text_main">#F0F4FC</color>
-    <color name="text_dim">#7A889B</color>
+    <!-- 极客座舱质感暗色系 -->
+    <color name="bg_dark">#090D14</color>
+    <color name="bg_card">#121824</color>
+    <color name="bg_card_secondary">#192233</color>
+    <color name="card_border">#243047</color>
+    
+    <!-- 状态指示强调色 -->
+    <color name="cyan">#00E5FF</color>
+    <color name="cyan_dim">#1A3B47</color>
+    <color name="green">#00E676</color>
+    <color name="green_dim">#143B2A</color>
+    <color name="amber">#FFB300</color>
+    <color name="amber_dim">#3E3113</color>
+    <color name="red">#FF3D00</color>
+    <color name="red_dim">#3E1B15</color>
+    <color name="blue">#2979FF</color>
+    
+    <!-- 排版色彩层级 -->
+    <color name="text_title">#FFFFFF</color>
+    <color name="text_main">#E2E8F0</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="text_dim">#64748B</color>
+    <color name="divider">#1E293B</color>
 </resources>
