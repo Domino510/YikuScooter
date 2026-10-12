@@ -97,6 +97,17 @@ public class BleVehicleService extends Service {
         startScanForScooter();
     }
 
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && intent.hasExtra("cmd")) {
+            int cmd = intent.getIntExtra("cmd", 0);
+            if (cmd > 0) {
+                sendCommand(cmd);
+            }
+        }
+        return START_STICKY;
+    }
+
     private void startScanForScooter() {
         if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) return;
         mBleScanner = mBluetoothAdapter.getBluetoothLeScanner();
