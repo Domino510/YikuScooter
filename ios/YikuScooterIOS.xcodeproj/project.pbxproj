@@ -1,0 +1,303 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000012900000000000001 /* YikuScooterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000012900000000000001 /* YikuScooterApp.swift */; };
+		A10000022900000000000002 /* ScooterProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000022900000000000002 /* ScooterProtocol.swift */; };
+		A10000032900000000000003 /* BleVehicleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000032900000000000003 /* BleVehicleManager.swift */; };
+		A10000042900000000000004 /* LocationSpeedEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000042900000000000004 /* LocationSpeedEngine.swift */; };
+		A10000052900000000000005 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000052900000000000005 /* ContentView.swift */; };
+		A10000062900000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000062900000000000006 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A20000002900000000000000 /* 壹酷 封神DZ.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "壹酷 封神DZ.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000012900000000000001 /* YikuScooterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YikuScooterApp.swift; sourceTree = "<group>"; };
+		A20000022900000000000002 /* ScooterProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScooterProtocol.swift; sourceTree = "<group>"; };
+		A20000032900000000000003 /* BleVehicleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleVehicleManager.swift; sourceTree = "<group>"; };
+		A20000042900000000000004 /* LocationSpeedEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSpeedEngine.swift; sourceTree = "<group>"; };
+		A20000052900000000000005 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A20000062900000000000006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A20000072900000000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A30000002900000000000000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A40000002900000000000000 = {
+			isa = PBXGroup;
+			children = (
+				A40000012900000000000001 /* YikuScooterIOS */,
+				A40000022900000000000002 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A40000012900000000000001 /* YikuScooterIOS */ = {
+			isa = PBXGroup;
+			children = (
+				A40000032900000000000003 /* App */,
+				A40000042900000000000004 /* Models */,
+				A40000052900000000000005 /* Services */,
+				A40000062900000000000006 /* Views */,
+				A20000062900000000000006 /* Assets.xcassets */,
+				A20000072900000000000007 /* Info.plist */,
+			);
+			path = YikuScooterIOS;
+			sourceTree = "<group>";
+		};
+		A40000022900000000000002 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A20000002900000000000000 /* 壹酷 封神DZ.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A40000032900000000000003 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A20000012900000000000001 /* YikuScooterApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A40000042900000000000004 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A20000022900000000000002 /* ScooterProtocol.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A40000052900000000000005 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A20000032900000000000003 /* BleVehicleManager.swift */,
+				A20000042900000000000004 /* LocationSpeedEngine.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A40000062900000000000006 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A20000052900000000000005 /* ContentView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A50000002900000000000000 /* YikuScooterIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A60000002900000000000000 /* Build configuration list for PBXNativeTarget "YikuScooterIOS" */;
+			buildPhases = (
+				A70000002900000000000000 /* Sources */,
+				A30000002900000000000000 /* Frameworks */,
+				A80000002900000000000000 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = YikuScooterIOS;
+			productName = YikuScooterIOS;
+			productReference = A20000002900000000000000 /* 壹酷 封神DZ.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A90000002900000000000000 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					A50000002900000000000000 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = AA0000002900000000000000 /* Build configuration list for PBXProject "YikuScooterIOS" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A40000002900000000000000;
+			productRefGroup = A40000022900000000000002 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A50000002900000000000000 /* YikuScooterIOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A80000002900000000000000 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000062900000000000006 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A70000002900000000000000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000012900000000000001 /* YikuScooterApp.swift in Sources */,
+				A10000022900000000000002 /* ScooterProtocol.swift in Sources */,
+				A10000032900000000000003 /* BleVehicleManager.swift in Sources */,
+				A10000042900000000000004 /* LocationSpeedEngine.swift in Sources */,
+				A10000052900000000000005 /* ContentView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		AB0000002900000000000000 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		AB0000012900000000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_OPTIMIZATION_LEVEL = s;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AC0000002900000000000000 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = YikuScooterIOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.onecool.scooter;
+				PRODUCT_NAME = "壹酷 封神DZ";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AC0000012900000000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = YikuScooterIOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.onecool.scooter;
+				PRODUCT_NAME = "壹酷 封神DZ";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AA0000002900000000000000 /* Build configuration list for PBXProject "YikuScooterIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB0000002900000000000000 /* Debug */,
+				AB0000012900000000000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A60000002900000000000000 /* Build configuration list for PBXNativeTarget "YikuScooterIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AC0000002900000000000000 /* Debug */,
+				AC0000012900000000000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A90000002900000000000000 /* Project object */;
+}
