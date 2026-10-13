@@ -231,17 +231,6 @@ public class MainActivity extends AppCompatActivity {
         if (btnPowerOff != null) {
             btnPowerOff.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_POWER_OFF, "关闭电门"));
         }
-        if (btnPowerCore != null) {
-            btnPowerCore.setBackgroundResource(t.isPowerOn ? R.drawable.bg_power_ring_on : R.drawable.bg_power_ring_off);
-        }
-        if (tvPowerCoreTitle != null) {
-            tvPowerCoreTitle.setText(t.isPowerOn ? "STOP" : "START");
-        }
-        if (tvPowerCoreSub != null) {
-            tvPowerCoreSub.setText(t.isPowerOn ? "动力就绪 · 轻触断电" : "点击上电");
-            tvPowerCoreSub.setTextColor(t.isPowerOn ? 0xFF00E676 : 0xFF64748B);
-        }
-
         if (btnLockToggle != null) {
             btnLockToggle.setOnClickListener(v -> {
                 boolean isLocked = (mBleService != null && mBleService.getLatestTelemetry().isLocked);
@@ -543,17 +532,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // 按钮文本动态同步
-        if (btnPowerCore != null) {
-            btnPowerCore.setBackgroundResource(t.isPowerOn ? R.drawable.bg_power_ring_on : R.drawable.bg_power_ring_off);
-        }
-        if (tvPowerCoreTitle != null) {
-            tvPowerCoreTitle.setText(t.isPowerOn ? "STOP" : "START");
-        }
-        if (tvPowerCoreSub != null) {
-            tvPowerCoreSub.setText(t.isPowerOn ? "动力就绪 · 轻触断电" : "点击上电");
-            tvPowerCoreSub.setTextColor(t.isPowerOn ? 0xFF00E676 : 0xFF64748B);
-        }
-
         if (btnLockToggle != null) {
             btnLockToggle.setText(t.isLocked ? "撤防解锁" : "锁车设防");
             btnLockToggle.setBackgroundTintList(ContextCompat.getColorStateList(this, t.isLocked ? R.color.cyan : R.color.amber));
