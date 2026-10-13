@@ -85,7 +85,7 @@
                 android:id="@+id/badge_limit_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="全速模式"
+                android:text="极速模式"
                 android:textColor="@color/cyan"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -108,7 +108,7 @@
                 android:background="@color/bg_card"
                 android:padding="10dp"
                 android:layout_marginEnd="4dp">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="母线电压" android:textColor="@color/text_dim" android:textSize="11sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="电池电压" android:textColor="@color/text_dim" android:textSize="11sp" />
                 <TextView android:id="@+id/tv_voltage" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="--.-" android:textColor="@color/cyan" android:textSize="38sp" android:textStyle="bold" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="VOLTS" android:textColor="@color/text_dim" android:textSize="10sp" />
             </LinearLayout>
@@ -174,7 +174,7 @@
                 android:id="@+id/tv_error_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🛡️ 自检正常"
+                android:text="全车自检正常"
                 android:textColor="@color/green"
                 android:textSize="11sp"
                 android:textStyle="bold" />

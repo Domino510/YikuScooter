@@ -5,6 +5,9 @@ package com.onecool.scooter.protocol;
  */
 public class ScooterProtocol {
 
+    public static final String DEVICE_NAME = "smart_ebike";
+    public static final String DEVICE_MAC = "65:FF:00:0C:25:64";
+
     public static final String SERVICE_UUID = "86912001-B5A3-F393-E0A9-E50E24DCCA9E";
     public static final String WRITE_CHAR_UUID = "86912002-B5A3-F393-E0A9-E50E24DCCA9E";
     public static final String NOTIFY_CHAR_UUID = "86912003-B5A3-F393-E0A9-E50E24DCCA9E";
@@ -43,10 +46,9 @@ public class ScooterProtocol {
     // 感应距离档位 1~7 级 (CMD 65~71)
     public static final int CMD_DISTANCE_BASE = 64;   // 加上 1~7 级
 
-    // ECU 控制器调参指令 (免密)
-    public static final int CMD_ECU_CURRENT = 253;     // 调节动能回收制动力矩 (1~255)
-    public static final int CMD_ECU_CONFIG_HIGH = 254; // 发送高级配置高字节
-    public static final int CMD_ECU_CONFIG_LOW = 255;  // 发送常规配置低字节
+    // ECU 控制器调参指令 (免密工程通道，对应官方小程序 ecuConfig2 实现)
+    public static final int CMD_ECU_CONFIG = 255;      // 发送功能配置 (arg1: 低8位, arg2: 高8位)
+    public static final int CMD_ECU_CURRENT = 254;     // 发送能量回收制动力矩电流 (arg1: current 1~255, arg2: 255 - current)
 
     // 默认已知配对密钥（可被广播包动态更新）
     public static byte[] DEFAULT_R = new byte[]{(byte) 0x1D, (byte) 0xAC, (byte) 0x58, (byte) 0xCB};
@@ -182,8 +184,19 @@ public class ScooterProtocol {
         t.voltage = (data[20] & 0xFF) + 0.1f * (data[21] & 0xFF);
 
         if (data.length >= 24) {
-            int sv = data[22] & 0xFF;
-            if (sv >= 36 && sv <= 96) t.sysVoltage = sv;
+            // 第22字节为位掩码: 1=36V, 2=48V, 4=60V, 8=64V, 16=72V, 32=80V, 64=84V, 128=96V
+            int svMask = data[22] & 0xFF;
+            switch (svMask) {
+                case 1: t.sysVoltage = 36; break;
+                case 2: t.sysVoltage = 48; break;
+                case 4: t.sysVoltage = 60; break;
+                case 8: t.sysVoltage = 64; break;
+                case 16: t.sysVoltage = 72; break;
+                case 32: t.sysVoltage = 80; break;
+                case 64: t.sysVoltage = 84; break;
+                case 128: t.sysVoltage = 96; break;
+                default: t.sysVoltage = 60; break;
+            }
             t.distanceLevel = Math.max(1, Math.min(7, (data[23] & 0x0F)));
         }
 

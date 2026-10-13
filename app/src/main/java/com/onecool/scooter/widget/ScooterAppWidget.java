@@ -72,7 +72,7 @@ public class ScooterAppWidget extends AppWidgetProvider {
                 // 向后台服务发送控制指令
                 Intent serviceIntent = new Intent(context, BleVehicleService.class);
                 serviceIntent.putExtra("cmd", cmd);
-                context.startService(serviceIntent);
+                androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent);
             }
         } else if (BleVehicleService.ACTION_STATUS_UPDATED.equals(intent.getAction())) {
             // 收到车辆遥测数据，自动刷新桌面组件

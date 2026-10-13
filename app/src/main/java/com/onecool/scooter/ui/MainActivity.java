@@ -44,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
 
     // 顶部连接与状态
     private TextView tvStatusDot, tvConnStatus, tvDeviceSub;
+    private View layoutConnBadge;
 
     // 核心行车仪表数据
     private TextView tvSpeed, tvGear, tvVoltage, tvBattery, tvOnceTrip, tvTotalTrip, tvErrorStatus, badgeLimitStatus;
@@ -169,10 +170,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        // 顶部状态栏
+        // 顶部状态栏与点击重试胶囊
         tvStatusDot = findViewById(R.id.tv_status_dot);
         tvConnStatus = findViewById(R.id.tv_conn_status);
         tvDeviceSub = findViewById(R.id.tv_device_sub);
+        layoutConnBadge = findViewById(R.id.layout_conn_badge);
+
+        if (layoutConnBadge != null) {
+            layoutConnBadge.setOnClickListener(v -> {
+                if (mBleService != null) {
+                    if (!mBleService.isConnected()) {
+                        mBleService.connectToScooter();
+                        Toast.makeText(this, "正在尝试连接车机...", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "车机已在线 (信号: " + mBleService.getLastRssi() + " dBm)", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    startVehicleService();
+                }
+            });
+        }
 
         // 仪表盘
         tvSpeed = findViewById(R.id.tv_speed);
@@ -192,27 +209,27 @@ public class MainActivity extends AppCompatActivity {
         btnSeekVehicle = findViewById(R.id.btn_seek_vehicle);
 
         if (btnPowerOn != null) {
-            btnPowerOn.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_POWER_ON, "电门上电"));
+            btnPowerOn.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_POWER_ON, "开启电门"));
         }
         if (btnPowerOff != null) {
-            btnPowerOff.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_POWER_OFF, "电门断电"));
+            btnPowerOff.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_POWER_OFF, "关闭电门"));
         }
         if (btnLockToggle != null) {
             btnLockToggle.setOnClickListener(v -> {
                 boolean isLocked = (mBleService != null && mBleService.getLatestTelemetry().isLocked);
                 int cmd = isLocked ? ScooterProtocol.CMD_UNLOCK : ScooterProtocol.CMD_LOCK;
-                sendCommand(cmd, isLocked ? "撤防解锁" : "设防闭锁");
+                sendCommand(cmd, isLocked ? "撤防解锁" : "锁车设防");
             });
         }
         if (btnSpeedLimitToggle != null) {
             btnSpeedLimitToggle.setOnClickListener(v -> {
                 boolean isLimit = (mBleService != null && mBleService.getLatestTelemetry().isSpeedLimit);
                 int cmd = isLimit ? ScooterProtocol.CMD_SPEED_LIMIT_OFF : ScooterProtocol.CMD_SPEED_LIMIT_ON;
-                sendCommand(cmd, isLimit ? "极速解除" : "恢复限速");
+                sendCommand(cmd, isLimit ? "极速模式" : "恢复限速");
             });
         }
         if (btnSeekVehicle != null) {
-            btnSeekVehicle.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_MUTE, "寻车鸣笛"));
+            btnSeekVehicle.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_MUTE, "鸣笛寻车"));
         }
 
         // 智能近场与安防
@@ -233,7 +250,7 @@ public class MainActivity extends AppCompatActivity {
                     mBleService.setProximityUnlockEnabled(isChecked);
                 }
                 sendCommand(isChecked ? ScooterProtocol.CMD_GANYING_ON : ScooterProtocol.CMD_GANYING_OFF,
-                        isChecked ? "开启无感感应" : "关闭无感感应");
+                        isChecked ? "开启感应解锁" : "关闭感应解锁");
             });
         }
 
@@ -314,7 +331,7 @@ public class MainActivity extends AppCompatActivity {
         btnVolt72v = findViewById(R.id.btn_volt_72v);
 
         if (btnVolt48v != null) btnVolt48v.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_VOLTAGE_48V, "校准标称电压 48V"));
-        if (btnVolt60v != null) btnVolt60v.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_VOLTAGE_60V, "校准标称电压 60V (封神DZ加长锂电)"));
+        if (btnVolt60v != null) btnVolt60v.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_VOLTAGE_60V, "校准标称电压 60V"));
         if (btnVolt72v != null) btnVolt72v.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_VOLTAGE_72V, "校准标称电压 72V"));
     }
 
@@ -390,16 +407,21 @@ public class MainActivity extends AppCompatActivity {
             if (ok) {
                 Toast.makeText(this, "指令已下发: " + actionName, Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(this, "指令发送失败，正在重试通道...", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "指令下发未响应，重试中...", Toast.LENGTH_SHORT).show();
             }
         } else {
-            Toast.makeText(this, "车机未连接，正在扫描中...", Toast.LENGTH_SHORT).show();
+            // 未连接时自动触发重连唤醒
+            if (mBleService != null) {
+                mBleService.connectToScooter();
+            }
+            Toast.makeText(this, "车机正在自动唤醒重连中，请靠近车身...", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void applyEcuConfig() {
         if (mBleService == null || !mBleService.isConnected()) {
             Toast.makeText(this, "车机未建立连接，无法写入ECU", Toast.LENGTH_SHORT).show();
+            if (mBleService != null) mBleService.connectToScooter();
             return;
         }
 
@@ -424,8 +446,9 @@ public class MainActivity extends AppCompatActivity {
             mEcuConfig |= (1 << 13); // 动能回收
         }
 
-        mBleService.sendCommand(ScooterProtocol.CMD_ECU_CONFIG_LOW, mEcuConfig & 0xFF, 0);
-        mBleService.sendCommand(ScooterProtocol.CMD_ECU_CONFIG_HIGH, (mEcuConfig >> 8) & 0xFF, 0);
+        // 依据官方小程序规范：CMD 255 同时下发低字节与高字节
+        mBleService.sendCommand(ScooterProtocol.CMD_ECU_CONFIG, mEcuConfig & 0xFF, (mEcuConfig >> 8) & 0xFF);
+        // CMD 254 发送动能回收力矩电流与补码
         mBleService.sendCommand(ScooterProtocol.CMD_ECU_CURRENT, mEbsCurrent, 255 - mEbsCurrent);
 
         Toast.makeText(this, "ECU 动力调教参数已同步！", Toast.LENGTH_SHORT).show();
@@ -441,7 +464,7 @@ public class MainActivity extends AppCompatActivity {
                 tvConnStatus.setText("已连接" + rssiStr);
                 tvConnStatus.setTextColor(0xFF00E676);
             } else {
-                tvConnStatus.setText("未连接 (靠近自动连接)");
+                tvConnStatus.setText("未连接 (点击重试)");
                 tvConnStatus.setTextColor(0xFF94A3B8);
             }
         }
@@ -454,7 +477,7 @@ public class MainActivity extends AppCompatActivity {
         if (tvSpeed != null) tvSpeed.setText(String.valueOf(t.speedKmh));
         if (tvGear != null) {
             if (t.isPShow || t.gear == 0) {
-                tvGear.setText("P 驻车");
+                tvGear.setText("P 档");
                 tvGear.setTextColor(0xFFFFB300);
             } else {
                 tvGear.setText("D" + t.gear + " 档");
@@ -473,10 +496,10 @@ public class MainActivity extends AppCompatActivity {
         // 故障自检与限速状态
         if (tvErrorStatus != null) {
             if (t.errorCode == 0) {
-                tvErrorStatus.setText("🛡️ 整车自检正常 · 无故障码");
+                tvErrorStatus.setText("整车系统自检正常");
                 tvErrorStatus.setTextColor(0xFF00E676);
             } else {
-                tvErrorStatus.setText("⚠️ 故障告警: " + t.errorMsg);
+                tvErrorStatus.setText("系统告警: " + t.errorMsg);
                 tvErrorStatus.setTextColor(0xFFFF3D00);
             }
         }
@@ -486,18 +509,18 @@ public class MainActivity extends AppCompatActivity {
                 badgeLimitStatus.setText("25km/h 限速");
                 badgeLimitStatus.setTextColor(0xFFFFB300);
             } else {
-                badgeLimitStatus.setText("🚀 极速解除");
+                badgeLimitStatus.setText("极速模式");
                 badgeLimitStatus.setTextColor(0xFF00E5FF);
             }
         }
 
         // 按钮文本动态同步
         if (btnLockToggle != null) {
-            btnLockToggle.setText(t.isLocked ? "🔓 撤防解锁" : "🔒 设防闭锁");
+            btnLockToggle.setText(t.isLocked ? "撤防解锁" : "锁车设防");
             btnLockToggle.setBackgroundTintList(ContextCompat.getColorStateList(this, t.isLocked ? R.color.cyan : R.color.amber));
         }
         if (btnSpeedLimitToggle != null) {
-            btnSpeedLimitToggle.setText(t.isSpeedLimit ? "🚀 解除限速" : "⏱ 恢复限速");
+            btnSpeedLimitToggle.setText(t.isSpeedLimit ? "🚀 解除限速" : "恢复限速");
         }
     }
 
