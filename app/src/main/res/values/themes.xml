@@ -2,10 +2,23 @@
     <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/cyan</item>
         <item name="colorPrimaryVariant">@color/cyan</item>
-        <item name="colorSecondary">@color/green</item>
+        <item name="colorSecondary">@color/cyan</item>
         <item name="colorOnPrimary">#000000</item>
         <item name="colorOnSecondary">#FFFFFF</item>
         <item name="android:windowBackground">@color/bg_dark</item>
         <item name="android:statusBarColor">@color/bg_dark</item>
+        <item name="switchStyle">@style/AutomotiveSwitch</item>
+        <item name="seekBarStyle">@style/AutomotiveSeekBar</item>
+    </style>
+
+    <style name="AutomotiveSwitch" parent="Widget.AppCompat.CompoundButton.Switch">
+        <item name="trackTint">@color/switch_track_tint</item>
+        <item name="thumbTint">@color/switch_thumb_tint</item>
+    </style>
+
+    <style name="AutomotiveSeekBar" parent="Widget.AppCompat.SeekBar">
+        <item name="android:progressDrawable">@drawable/seekbar_progress_neon</item>
+        <item name="android:thumb">@drawable/seekbar_thumb_neon</item>
+        <item name="android:splitTrack">false</item>
     </style>
 </resources>

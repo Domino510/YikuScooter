@@ -20,6 +20,7 @@ import java.util.Locale;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -72,8 +73,12 @@ public class MainActivity extends AppCompatActivity {
     // 核心行车仪表数据
     private TextView tvSpeed, tvGear, tvVoltage, tvBattery, tvOnceTrip, tvTotalTrip, tvErrorStatus, badgeLimitStatus;
 
-    // 核心控车按钮
-    private Button btnPowerOn, btnPowerOff, btnLockToggle, btnSpeedLimitToggle, btnSeekVehicle;
+    // 核心控车按钮与深空暗核磁贴
+    private View btnPowerOn, btnPowerOff, btnLockToggle, btnSpeedLimitToggle, btnSeekVehicle;
+    private ImageView ivTileLock, ivTileSpeed, ivTileSeek;
+    private TextView tvTileLockTitle, tvTileLockSub;
+    private TextView tvTileSpeedTitle, tvTileSpeedSub;
+    private TextView tvTileSeekTitle, tvTileSeekSub;
     private View btnPowerCore;
     private TextView tvPowerCoreTitle, tvPowerCoreSub;
 
@@ -231,12 +236,24 @@ public class MainActivity extends AppCompatActivity {
         tvErrorStatus = findViewById(R.id.tv_error_status);
         badgeLimitStatus = findViewById(R.id.badge_limit_status);
 
-        // 核心控车按钮
+        // 核心控车按钮与深空暗核磁贴
         btnPowerOn = findViewById(R.id.btn_power_on);
         btnPowerOff = findViewById(R.id.btn_power_off);
         btnLockToggle = findViewById(R.id.btn_lock_toggle);
         btnSpeedLimitToggle = findViewById(R.id.btn_speed_limit_toggle);
         btnSeekVehicle = findViewById(R.id.btn_seek_vehicle);
+
+        ivTileLock = findViewById(R.id.iv_tile_lock);
+        tvTileLockTitle = findViewById(R.id.tv_tile_lock_title);
+        tvTileLockSub = findViewById(R.id.tv_tile_lock_sub);
+
+        ivTileSpeed = findViewById(R.id.iv_tile_speed);
+        tvTileSpeedTitle = findViewById(R.id.tv_tile_speed_title);
+        tvTileSpeedSub = findViewById(R.id.tv_tile_speed_sub);
+
+        ivTileSeek = findViewById(R.id.iv_tile_seek);
+        tvTileSeekTitle = findViewById(R.id.tv_tile_seek_title);
+        tvTileSeekSub = findViewById(R.id.tv_tile_seek_sub);
 
         btnPowerCore = findViewById(R.id.btn_power_core);
         tvPowerCoreTitle = findViewById(R.id.tv_power_core_title);
@@ -375,9 +392,24 @@ public class MainActivity extends AppCompatActivity {
         btnVolt60v = findViewById(R.id.btn_volt_60v);
         btnVolt72v = findViewById(R.id.btn_volt_72v);
 
-        if (btnVolt48v != null) btnVolt48v.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_VOLTAGE_48V, "校准标称电压 48V"));
-        if (btnVolt60v != null) btnVolt60v.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_VOLTAGE_60V, "校准标称电压 60V"));
-        if (btnVolt72v != null) btnVolt72v.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_VOLTAGE_72V, "校准标称电压 72V"));
+        if (btnVolt48v != null) {
+            btnVolt48v.setOnClickListener(v -> {
+                updateVoltageTabsUI(48);
+                sendCommand(ScooterProtocol.CMD_VOLTAGE_48V, "校准标称电压 48V");
+            });
+        }
+        if (btnVolt60v != null) {
+            btnVolt60v.setOnClickListener(v -> {
+                updateVoltageTabsUI(60);
+                sendCommand(ScooterProtocol.CMD_VOLTAGE_60V, "校准标称电压 60V");
+            });
+        }
+        if (btnVolt72v != null) {
+            btnVolt72v.setOnClickListener(v -> {
+                updateVoltageTabsUI(72);
+                sendCommand(ScooterProtocol.CMD_VOLTAGE_72V, "校准标称电压 72V");
+            });
+        }
     }
 
     private void registerStatusReceiver() {
@@ -556,14 +588,45 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // 按钮文本动态同步
-        if (btnLockToggle != null) {
-            btnLockToggle.setText(t.isLocked ? "撤防解锁" : "锁车设防");
-            btnLockToggle.setBackgroundTintList(ContextCompat.getColorStateList(this, t.isLocked ? R.color.cyan : R.color.amber));
+        // 方案 A 特斯拉风磁贴动态状态与微光指示同步
+        if (tvTileLockTitle != null && tvTileLockSub != null && ivTileLock != null) {
+            if (t.isLocked) {
+                tvTileLockTitle.setText("撤防解锁");
+                tvTileLockSub.setText("已设防 · 防盗中");
+                tvTileLockSub.setTextColor(0xFF00E5FF);
+                ivTileLock.setImageTintList(ContextCompat.getColorStateList(this, R.color.cyan));
+                if (btnLockToggle != null) btnLockToggle.setBackgroundResource(R.drawable.bg_magnetic_tile_cyan);
+            } else {
+                tvTileLockTitle.setText("车辆设防");
+                tvTileLockSub.setText("未设防 · 待上锁");
+                tvTileLockSub.setTextColor(0xFFFFB300);
+                ivTileLock.setImageTintList(ContextCompat.getColorStateList(this, R.color.amber));
+                if (btnLockToggle != null) btnLockToggle.setBackgroundResource(R.drawable.bg_magnetic_tile_amber);
+            }
         }
-        if (btnSpeedLimitToggle != null) {
-            btnSpeedLimitToggle.setText(t.isSpeedLimit ? "🚀 解除限速" : "恢复限速");
+
+        if (tvTileSpeedTitle != null && tvTileSpeedSub != null && ivTileSpeed != null) {
+            if (t.isSpeedLimit) {
+                tvTileSpeedTitle.setText("解除限速");
+                tvTileSpeedSub.setText("25km/h 限速");
+                tvTileSpeedSub.setTextColor(0xFFFFB300);
+                ivTileSpeed.setImageTintList(ContextCompat.getColorStateList(this, R.color.amber));
+                if (btnSpeedLimitToggle != null) btnSpeedLimitToggle.setBackgroundResource(R.drawable.bg_magnetic_tile_amber);
+            } else {
+                tvTileSpeedTitle.setText("动力极速");
+                tvTileSpeedSub.setText("极速全开 · 狂暴");
+                tvTileSpeedSub.setTextColor(0xFF00E5FF);
+                ivTileSpeed.setImageTintList(ContextCompat.getColorStateList(this, R.color.cyan));
+                if (btnSpeedLimitToggle != null) btnSpeedLimitToggle.setBackgroundResource(R.drawable.bg_magnetic_tile_cyan);
+            }
         }
+
+        if (ivTileSeek != null) {
+            ivTileSeek.setImageTintList(ContextCompat.getColorStateList(this, R.color.text_dim));
+        }
+
+        // 电池分段选择器同步
+        updateVoltageTabsUI(t.sysVoltage);
     }
 
 
@@ -748,5 +811,20 @@ public class MainActivity extends AppCompatActivity {
         });
         builder.setNegativeButton("取消", (dialog, which) -> dialog.cancel());
         builder.show();
+    }
+
+    private void updateVoltageTabsUI(int sysVolt) {
+        if (btnVolt48v != null) {
+            btnVolt48v.setBackgroundResource(sysVolt == 48 ? R.drawable.bg_segmented_item_selected : R.drawable.bg_segmented_item_normal);
+            btnVolt48v.setTextColor(sysVolt == 48 ? 0xFF00E5FF : 0xFF94A3B8);
+        }
+        if (btnVolt60v != null) {
+            btnVolt60v.setBackgroundResource(sysVolt == 60 ? R.drawable.bg_segmented_item_selected : R.drawable.bg_segmented_item_normal);
+            btnVolt60v.setTextColor(sysVolt == 60 ? 0xFF00E5FF : 0xFF94A3B8);
+        }
+        if (btnVolt72v != null) {
+            btnVolt72v.setBackgroundResource(sysVolt == 72 ? R.drawable.bg_segmented_item_selected : R.drawable.bg_segmented_item_normal);
+            btnVolt72v.setTextColor(sysVolt == 72 ? 0xFF00E5FF : 0xFF94A3B8);
+        }
     }
 }
