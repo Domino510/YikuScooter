@@ -92,6 +92,12 @@ public class BleVehicleService extends Service {
         }
     }
 
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return mBinder;
+    }
+
     public void addListener(VehicleListener listener) {
         if (!mListeners.contains(listener)) {
             mListeners.add(listener);
