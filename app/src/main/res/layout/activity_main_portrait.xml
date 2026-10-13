@@ -717,16 +717,30 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- 电池系统规格 -->
-        <TextView
-            android:layout_width="wrap_content"
+        <!-- 电池系统规格 (完美对齐单行排版) -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="电池系统规格校准"
-            android:textColor="@color/text_dim"
-            android:textSize="13sp"
-            android:textStyle="bold"
+            android:orientation="vertical"
             android:layout_marginTop="22dp"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginBottom="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="电池系统规格校准"
+                android:textColor="@color/text_dim"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="当前车辆出厂标配为 60V 加长锂电系统"
+                android:textColor="@color/text_dim"
+                android:textSize="11sp"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -737,36 +751,42 @@
             <Button
                 android:id="@+id/btn_volt_48v"
                 android:layout_width="0dp"
-                android:layout_height="44dp"
+                android:layout_height="46dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="4dp"
                 android:text="48V 锂电"
                 android:textColor="@color/text_main"
                 android:backgroundTint="@color/bg_card_secondary"
-                android:textSize="13sp" />
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:paddingHorizontal="0dp" />
 
             <Button
                 android:id="@+id/btn_volt_60v"
                 android:layout_width="0dp"
-                android:layout_height="44dp"
+                android:layout_height="46dp"
                 android:layout_weight="1"
                 android:layout_marginHorizontal="4dp"
-                android:text="60V 锂电 (标配)"
+                android:text="60V 标配"
                 android:textColor="#FFFFFF"
                 android:backgroundTint="@color/cyan_dim"
                 android:textStyle="bold"
-                android:textSize="13sp" />
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:paddingHorizontal="0dp" />
 
             <Button
                 android:id="@+id/btn_volt_72v"
                 android:layout_width="0dp"
-                android:layout_height="44dp"
+                android:layout_height="46dp"
                 android:layout_weight="1"
                 android:layout_marginStart="4dp"
                 android:text="72V 锂电"
                 android:textColor="@color/text_main"
                 android:backgroundTint="@color/bg_card_secondary"
-                android:textSize="13sp" />
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:paddingHorizontal="0dp" />
         </LinearLayout>
 
     </LinearLayout>

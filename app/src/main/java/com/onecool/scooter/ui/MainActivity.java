@@ -13,6 +13,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import java.util.Locale;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -41,6 +45,23 @@ public class MainActivity extends AppCompatActivity {
     private BleVehicleService mBleService;
     private boolean mIsBound = false;
     private boolean mIsReceiverRegistered = false;
+
+    // GPS 卫星高精度测速与里程积分引擎
+    private LocationManager mLocationManager;
+    private Location mLastGpsLocation = null;
+    private int mGpsSpeedKmh = 0;
+    private float mGpsTripKm = 0.0f;
+    private boolean mIsGpsTracking = false;
+
+    private final LocationListener mLocationListener = new LocationListener() {
+        @Override
+        public void onLocationChanged(@NonNull Location location) {
+            handleGpsLocationUpdate(location);
+        }
+        @Override public void onStatusChanged(String provider, int status, Bundle extras) {}
+        @Override public void onProviderEnabled(@NonNull String provider) {}
+        @Override public void onProviderDisabled(@NonNull String provider) {}
+    };
 
     // 顶部连接与状态
     private TextView tvStatusDot, tvConnStatus, tvDeviceSub;
@@ -490,17 +511,8 @@ public class MainActivity extends AppCompatActivity {
     private void updateTelemetryUI(ScooterProtocol.TelemetryData t) {
         if (t == null || !t.valid) return;
 
-        // 速度与档位
-        if (tvSpeed != null) tvSpeed.setText(String.valueOf(t.speedKmh));
-        if (tvGear != null) {
-            if (t.isPShow || t.gear == 0) {
-                tvGear.setText("P 档");
-                tvGear.setTextColor(0xFFFFB300);
-            } else {
-                tvGear.setText("D" + t.gear + " 档");
-                tvGear.setTextColor(0xFF00E5FF);
-            }
-        }
+        // 速度与档位 (调用 GPS 融合与 P/D 联动逻辑)
+        refreshSpeedAndGearUI();
 
         // 电压与电量
         if (tvVoltage != null) tvVoltage.setText(String.format("%.1f V", t.voltage));
@@ -544,6 +556,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        stopGpsTracking();
         if (mIsReceiverRegistered) {
             try {
                 unregisterReceiver(mStatusReceiver);
