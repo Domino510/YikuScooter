@@ -51,6 +51,8 @@ public class MainActivity extends AppCompatActivity {
     private Location mLastGpsLocation = null;
     private int mGpsSpeedKmh = 0;
     private float mGpsTripKm = 0.0f;
+    private float mTotalMileageKm = 0.3f;
+    private android.content.SharedPreferences mPrefs;
     private boolean mIsGpsTracking = false;
 
     private final LocationListener mLocationListener = new LocationListener() {
@@ -152,6 +154,8 @@ public class MainActivity extends AppCompatActivity {
 
         try {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            mPrefs = getSharedPreferences("scooter_prefs", Context.MODE_PRIVATE);
+            mTotalMileageKm = mPrefs.getFloat("key_total_mileage_km", 0.3f);
             checkOrientationLayout();
             initViews();
             registerStatusReceiver();
@@ -221,6 +225,9 @@ public class MainActivity extends AppCompatActivity {
         tvBattery = findViewById(R.id.tv_battery);
         tvOnceTrip = findViewById(R.id.tv_once_trip);
         tvTotalTrip = findViewById(R.id.tv_total_trip);
+        if (tvTotalTrip != null) {
+            tvTotalTrip.setOnClickListener(v -> showOdometerCalibrateDialog());
+        }
         tvErrorStatus = findViewById(R.id.tv_error_status);
         badgeLimitStatus = findViewById(R.id.badge_limit_status);
 
@@ -518,9 +525,15 @@ public class MainActivity extends AppCompatActivity {
         if (tvVoltage != null) tvVoltage.setText(String.format("%.1f V", t.voltage));
         if (tvBattery != null) tvBattery.setText(t.batteryPercent + " %");
 
-        // 里程
-        if (tvOnceTrip != null) tvOnceTrip.setText(String.format("%.1f km", t.onceMileageKm));
-        if (tvTotalTrip != null) tvTotalTrip.setText(t.totalMileageKm + " km");
+        // 里程 (硬件回传优先，否则保持 GPS 累加里程)
+        if (tvOnceTrip != null) {
+            float displayTrip = (t.onceMileageKm > 0) ? t.onceMileageKm : mGpsTripKm;
+            tvOnceTrip.setText(String.format(Locale.getDefault(), "%.1f km", displayTrip));
+        }
+        if (tvTotalTrip != null) {
+            float displayTotal = (t.totalMileageKm > 0) ? t.totalMileageKm : mTotalMileageKm;
+            tvTotalTrip.setText(String.format(Locale.getDefault(), "%.1f km", displayTotal));
+        }
 
         // 故障自检与限速状态
         if (tvErrorStatus != null) {
@@ -611,7 +624,12 @@ public class MainActivity extends AppCompatActivity {
         if (mLastGpsLocation != null && speed > 0) {
             float deltaM = mLastGpsLocation.distanceTo(location);
             if (deltaM > 1.0f && deltaM < 120.0f) {
-                mGpsTripKm += (deltaM / 1000.0f);
+                float deltaKm = deltaM / 1000.0f;
+                mGpsTripKm += deltaKm;
+                mTotalMileageKm += deltaKm;
+                if (mPrefs != null) {
+                    mPrefs.edit().putFloat("key_total_mileage_km", mTotalMileageKm).apply();
+                }
             }
         }
         mLastGpsLocation = location;
@@ -629,12 +647,18 @@ public class MainActivity extends AppCompatActivity {
             tvSpeed.setText(String.valueOf(displaySpeed));
         }
 
-        // 里程显示：优先使用累加里程
+        // 里程显示：硬件回传优先，否则使用高精 GPS 积分与持久化总里程
         if (tvOnceTrip != null) {
             float displayTrip = (mBleService != null && mBleService.getLatestTelemetry().onceMileageKm > 0)
                     ? mBleService.getLatestTelemetry().onceMileageKm
                     : mGpsTripKm;
             tvOnceTrip.setText(String.format(Locale.getDefault(), "%.1f km", displayTrip));
+        }
+        if (tvTotalTrip != null) {
+            float displayTotal = (mBleService != null && mBleService.getLatestTelemetry().totalMileageKm > 0)
+                    ? mBleService.getLatestTelemetry().totalMileageKm
+                    : mTotalMileageKm;
+            tvTotalTrip.setText(String.format(Locale.getDefault(), "%.1f km", displayTotal));
         }
 
         // P档与D档与车速智能联动逻辑：
@@ -692,5 +716,37 @@ public class MainActivity extends AppCompatActivity {
             } catch (Exception ignored) {}
             mIsBound = false;
         }
+    }
+
+    private void showOdometerCalibrateDialog() {
+        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
+        builder.setTitle("校准总行驶里程 (km)");
+        final android.widget.EditText input = new android.widget.EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        input.setHint(String.format(Locale.getDefault(), "当前: %.1f km", mTotalMileageKm));
+        input.setText(String.format(Locale.getDefault(), "%.1f", mTotalMileageKm));
+        input.selectAll();
+        builder.setView(input);
+
+        builder.setPositiveButton("保存", (dialog, which) -> {
+            try {
+                String valStr = input.getText().toString().trim();
+                float val = Float.parseFloat(valStr);
+                if (val >= 0) {
+                    mTotalMileageKm = val;
+                    if (mPrefs != null) {
+                        mPrefs.edit().putFloat("key_total_mileage_km", mTotalMileageKm).apply();
+                    }
+                    if (tvTotalTrip != null) {
+                        tvTotalTrip.setText(String.format(Locale.getDefault(), "%.1f km", mTotalMileageKm));
+                    }
+                    Toast.makeText(this, "总里程已校准为: " + String.format(Locale.getDefault(), "%.1f km", mTotalMileageKm), Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
+                Toast.makeText(this, "请输入有效的数字", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("取消", (dialog, which) -> dialog.cancel());
+        builder.show();
     }
 }
