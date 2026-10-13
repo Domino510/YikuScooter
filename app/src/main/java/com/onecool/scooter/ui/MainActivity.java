@@ -553,6 +553,126 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    private void startGpsTracking() {
+        if (mIsGpsTracking) return;
+        try {
+            if (mLocationManager == null) {
+                mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            }
+            if (mLocationManager != null && hasRequiredPermissions()) {
+                if (mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                    mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 300, 0f, mLocationListener);
+                    mIsGpsTracking = true;
+                    Log.i(TAG, "GPS 卫星实时测速已启动 (300ms 刷新)");
+                } else if (mLocationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                    mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 500, 0f, mLocationListener);
+                    mIsGpsTracking = true;
+                }
+            }
+        } catch (SecurityException se) {
+            Log.w(TAG, "GPS 权限受限: " + se.getMessage());
+        } catch (Exception e) {
+            Log.e(TAG, "启动 GPS 测速异常: " + e.getMessage());
+        }
+    }
+
+    private void stopGpsTracking() {
+        if (mLocationManager != null && mIsGpsTracking) {
+            try {
+                mLocationManager.removeUpdates(mLocationListener);
+            } catch (Exception ignored) {}
+            mIsGpsTracking = false;
+        }
+    }
+
+    private void handleGpsLocationUpdate(Location location) {
+        if (location == null) return;
+
+        // 计算 GPS 卫星车速
+        int speed = 0;
+        if (location.hasSpeed()) {
+            speed = Math.round(location.getSpeed() * 3.6f);
+        } else if (mLastGpsLocation != null) {
+            long timeDeltaMs = location.getTime() - mLastGpsLocation.getTime();
+            if (timeDeltaMs > 300 && timeDeltaMs < 8000) {
+                float distM = mLastGpsLocation.distanceTo(location);
+                speed = Math.round((distM / (timeDeltaMs / 1000.0f)) * 3.6f);
+            }
+        }
+
+        // 过滤静止漂移抖动 (时速低于 2km/h 视为静止)
+        if (speed < 2) {
+            speed = 0;
+        }
+        mGpsSpeedKmh = speed;
+
+        // 里程积分累加
+        if (mLastGpsLocation != null && speed > 0) {
+            float deltaM = mLastGpsLocation.distanceTo(location);
+            if (deltaM > 1.0f && deltaM < 120.0f) {
+                mGpsTripKm += (deltaM / 1000.0f);
+            }
+        }
+        mLastGpsLocation = location;
+
+        runOnUiThread(this::refreshSpeedAndGearUI);
+    }
+
+    private void refreshSpeedAndGearUI() {
+        // 车速优先级：硬件回传车速优先，无硬件测速线时由 GPS 卫星真实时速联动
+        int displaySpeed = (mBleService != null && mBleService.getLatestTelemetry().speedKmh > 0)
+                ? mBleService.getLatestTelemetry().speedKmh
+                : mGpsSpeedKmh;
+
+        if (tvSpeed != null) {
+            tvSpeed.setText(String.valueOf(displaySpeed));
+        }
+
+        // 里程显示：优先使用累加里程
+        if (tvOnceTrip != null) {
+            float displayTrip = (mBleService != null && mBleService.getLatestTelemetry().onceMileageKm > 0)
+                    ? mBleService.getLatestTelemetry().onceMileageKm
+                    : mGpsTripKm;
+            tvOnceTrip.setText(String.format(Locale.getDefault(), "%.1f km", displayTrip));
+        }
+
+        // P档与D档与车速智能联动逻辑：
+        boolean isPowerOn = (mBleService != null && mBleService.getLatestTelemetry().isPowerOn);
+        if (tvGear != null) {
+            if (!isPowerOn) {
+                tvGear.setText("P 档");
+                tvGear.setTextColor(0xFFFFB300);
+            } else {
+                // 已上电时：静止 (速度<=1km/h) 处于驻车 P 档；开始行驶 (速度>1km/h) 自动切换为 D 档！
+                if (displaySpeed <= 1) {
+                    tvGear.setText("P 档");
+                    tvGear.setTextColor(0xFFFFB300);
+                } else if (displaySpeed > 25) {
+                    tvGear.setText("D 极速");
+                    tvGear.setTextColor(0xFF00E5FF);
+                } else {
+                    tvGear.setText("D 档");
+                    tvGear.setTextColor(0xFF00E5FF);
+                }
+            }
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (hasRequiredPermissions()) {
+            startGpsTracking();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopGpsTracking();
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
