@@ -183,7 +183,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="⚡ 母线电压"
+                        android:text="母线电压"
                         android:textColor="@color/text_dim"
                         android:textSize="10sp" />
                     <TextView
@@ -209,7 +209,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🔋 剩余电量"
+                        android:text="剩余电量"
                         android:textColor="@color/text_dim"
                         android:textSize="10sp" />
                     <TextView
@@ -235,7 +235,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🏁 单次里程"
+                        android:text="单次里程"
                         android:textColor="@color/text_dim"
                         android:textSize="10sp" />
                     <TextView
@@ -261,7 +261,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🛣️ 整车总计"
+                        android:text="整车总计"
                         android:textColor="@color/text_dim"
                         android:textSize="10sp" />
                     <TextView
@@ -1029,8 +1029,11 @@
             android:background="@drawable/bg_segmented_container"
             android:padding="3dp">
 
-            <Button
+            <TextView
                 android:id="@+id/btn_volt_48v"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
@@ -1042,8 +1045,11 @@
                 android:maxLines="1"
                 android:paddingHorizontal="0dp" />
 
-            <Button
+            <TextView
                 android:id="@+id/btn_volt_60v"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
@@ -1055,8 +1061,11 @@
                 android:maxLines="1"
                 android:paddingHorizontal="0dp" />
 
-            <Button
+            <TextView
                 android:id="@+id/btn_volt_72v"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"

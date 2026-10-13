@@ -94,7 +94,7 @@ public class MainActivity extends AppCompatActivity {
     private Button btnApplyEcu;
 
     // 电池校准
-    private Button btnVolt48v, btnVolt60v, btnVolt72v;
+    private TextView btnVolt48v, btnVolt60v, btnVolt72v;
 
     private int mEcuConfig = 6450;
     private int mEbsCurrent = 128;
