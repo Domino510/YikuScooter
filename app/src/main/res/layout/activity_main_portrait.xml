@@ -12,13 +12,13 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- 顶部车辆连接与设备信息卡片 -->
+        <!-- 顶部车辆连接与设备身份卡片 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:background="@color/bg_card"
+            android:background="@drawable/bg_card_cockpit"
             android:paddingHorizontal="16dp"
             android:paddingVertical="12dp">
 
@@ -31,16 +31,16 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="壹酷 封神DZ"
+                    android:text="壹酷 · 封神DZ"
                     android:textColor="@color/text_title"
                     android:textStyle="bold"
-                    android:textSize="17sp" />
+                    android:textSize="18sp" />
 
                 <TextView
                     android:id="@+id/tv_device_sub"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="加长锂电版 · 智控网联终端"
+                    android:text="加长锂电版 · 60V 平安700智控旗舰"
                     android:textColor="@color/text_dim"
                     android:textSize="12sp"
                     android:layout_marginTop="2dp" />
@@ -52,9 +52,9 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@color/bg_card_secondary"
-                android:paddingHorizontal="10dp"
-                android:paddingVertical="5dp">
+                android:background="@drawable/bg_capsule_badge"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp">
 
                 <TextView
                     android:id="@+id/tv_status_dot"
@@ -76,14 +76,14 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- 实时行车主仪表卡片 -->
+        <!-- 赛道级极光仪表舱 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="@color/bg_card"
+            android:background="@drawable/bg_card_cockpit"
             android:layout_marginTop="12dp"
-            android:padding="16dp">
+            android:padding="18dp">
 
             <!-- 速度与档位展示 -->
             <LinearLayout
@@ -119,7 +119,7 @@
                             android:layout_height="wrap_content"
                             android:text="0"
                             android:textColor="@color/text_title"
-                            android:textSize="52sp"
+                            android:textSize="56sp"
                             android:textStyle="bold"
                             android:includeFontPadding="false" />
 
@@ -128,9 +128,10 @@
                             android:layout_height="wrap_content"
                             android:text=" KM/H"
                             android:textColor="@color/text_dim"
-                            android:textSize="13sp"
+                            android:textSize="14sp"
                             android:textStyle="bold"
-                            android:layout_marginStart="4dp" />
+                            android:layout_marginStart="4dp"
+                            android:layout_marginBottom="6dp" />
                     </LinearLayout>
                 </LinearLayout>
 
@@ -140,9 +141,9 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:gravity="center"
-                    android:background="@color/bg_card_secondary"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="10dp">
+                    android:background="@drawable/bg_card_cockpit_inner"
+                    android:paddingHorizontal="18dp"
+                    android:paddingVertical="12dp">
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -157,13 +158,13 @@
                         android:layout_height="wrap_content"
                         android:text="P 档"
                         android:textColor="@color/amber"
-                        android:textSize="22sp"
+                        android:textSize="24sp"
                         android:textStyle="bold"
                         android:layout_marginTop="2dp" />
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- 电压、电量、单次与总里程四项数据矩阵 -->
+            <!-- 四象限行车数据矩阵 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -175,7 +176,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:orientation="vertical">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="电池电压" android:textColor="@color/text_dim" android:textSize="11sp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="母线电压" android:textColor="@color/text_dim" android:textSize="11sp" />
                     <TextView android:id="@+id/tv_voltage" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="--.- V" android:textColor="@color/cyan" android:textSize="18sp" android:textStyle="bold" android:layout_marginTop="2dp" />
                 </LinearLayout>
 
@@ -202,7 +203,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:orientation="vertical">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="总计里程" android:textColor="@color/text_dim" android:textSize="11sp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="整车总计" android:textColor="@color/text_dim" android:textSize="11sp" />
                     <TextView android:id="@+id/tv_total_trip" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0 km" android:textColor="@color/text_main" android:textSize="18sp" android:textStyle="bold" android:layout_marginTop="2dp" />
                 </LinearLayout>
             </LinearLayout>
@@ -213,9 +214,10 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@color/bg_card_secondary"
-                android:padding="10dp"
-                android:layout_marginTop="14dp">
+                android:background="@drawable/bg_card_cockpit_inner"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="10dp"
+                android:layout_marginTop="16dp">
 
                 <TextView
                     android:id="@+id/tv_error_status"
@@ -234,109 +236,125 @@
                     android:text="25 km/h 限速"
                     android:textColor="@color/cyan"
                     android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:paddingHorizontal="6dp" />
+                    android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- 核心控车交互区 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="快捷控车"
-            android:textColor="@color/text_dim"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="8dp" />
-
+        <!-- 主控能量启停环（取代土味红绿双拼方块，九号一键启动核心） -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/bg_card_cockpit"
+            android:layout_marginTop="12dp"
+            android:paddingVertical="18dp">
 
-            <Button
-                android:id="@+id/btn_power_on"
-                android:layout_width="0dp"
-                android:layout_height="54dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="6dp"
-                android:text="开启电门"
-                android:textColor="#FFFFFF"
-                android:backgroundTint="@color/green"
-                android:textStyle="bold"
-                android:textSize="15sp" />
+            <FrameLayout
+                android:id="@+id/btn_power_core"
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:background="@drawable/bg_power_ring_off"
+                android:clickable="true"
+                android:focusable="true">
 
-            <Button
-                android:id="@+id/btn_power_off"
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tv_power_core_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="START"
+                        android:textColor="#FFFFFF"
+                        android:textSize="17sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.05" />
+
+                    <TextView
+                        android:id="@+id/tv_power_core_sub"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="点击上电"
+                        android:textColor="@color/text_dim"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+            </FrameLayout>
+
+            <!-- 隐藏的传统按钮 ID，确保完全兼容原有逻辑 -->
+            <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="54dp"
-                android:layout_weight="1"
-                android:layout_marginStart="6dp"
-                android:text="关闭电门"
-                android:textColor="#FFFFFF"
-                android:backgroundTint="@color/red"
-                android:textStyle="bold"
-                android:textSize="15sp" />
+                android:layout_height="0dp"
+                android:visibility="gone">
+                <Button android:id="@+id/btn_power_on" android:layout_width="0dp" android:layout_height="0dp" />
+                <Button android:id="@+id/btn_power_off" android:layout_width="0dp" android:layout_height="0dp" />
+            </LinearLayout>
         </LinearLayout>
 
+        <!-- 快捷控车悬浮胶囊栏 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="10dp">
+            android:layout_marginTop="12dp">
 
             <Button
                 android:id="@+id/btn_lock_toggle"
                 android:layout_width="0dp"
-                android:layout_height="50dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="4dp"
                 android:text="锁车设防"
                 android:textColor="#FFFFFF"
                 android:backgroundTint="@color/amber"
-                android:textSize="14sp" />
+                android:textSize="13sp"
+                android:textStyle="bold" />
 
             <Button
                 android:id="@+id/btn_speed_limit_toggle"
                 android:layout_width="0dp"
-                android:layout_height="50dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
                 android:layout_marginHorizontal="4dp"
                 android:text="极速模式"
                 android:textColor="#08101A"
                 android:backgroundTint="@color/cyan"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
             <Button
                 android:id="@+id/btn_seek_vehicle"
                 android:layout_width="0dp"
-                android:layout_height="50dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
                 android:layout_marginStart="4dp"
                 android:text="鸣笛寻车"
                 android:textColor="@color/text_main"
                 android:backgroundTint="@color/bg_card_secondary"
-                android:textSize="14sp" />
+                android:textSize="13sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- 感应与安全设置 -->
+        <!-- AirLock 无感互联舱 -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="感应与安全设置"
+            android:text="AirLock 无感互联与安防"
             android:textColor="@color/text_dim"
             android:textSize="13sp"
             android:textStyle="bold"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="22dp"
             android:layout_marginBottom="8dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="@color/bg_card"
+            android:background="@drawable/bg_card_cockpit"
             android:padding="16dp">
 
             <!-- 感应解锁 -->
@@ -503,22 +521,22 @@
                 android:layout_marginTop="8dp" />
         </LinearLayout>
 
-        <!-- 动力与骑行调校 (ECU 控制器) -->
+        <!-- 动力与骑行调校 (RideyFun 控制台) -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="动力与骑行调校"
+            android:text="动力性能与骑行调校"
             android:textColor="@color/text_dim"
             android:textSize="13sp"
             android:textStyle="bold"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="22dp"
             android:layout_marginBottom="8dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="@color/bg_card"
+            android:background="@drawable/bg_card_cockpit"
             android:padding="16dp">
 
             <!-- TCS 开关 -->
@@ -699,7 +717,7 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- 电池系统标称规格 -->
+        <!-- 电池系统规格 -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -707,7 +725,7 @@
             android:textColor="@color/text_dim"
             android:textSize="13sp"
             android:textStyle="bold"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="22dp"
             android:layout_marginBottom="8dp" />
 
         <LinearLayout
