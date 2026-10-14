@@ -81,7 +81,7 @@ struct ContentView: View {
                         Circle()
                             .fill(ble.isConnected ? Color.green : Color.red)
                             .frame(width: 8, height: 8)
-                        Text(ble.isConnected ? "已在线 (\(ble.rssi)dBm)" : "等待连接")
+                        Text(ble.isConnected ? "已在线 (\(ble.rssi)dBm)" : ble.statusText)
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.white)
                     }
@@ -90,7 +90,7 @@ struct ContentView: View {
                     .background(Color(white: 0.12))
                     .cornerRadius(14)
                     .onTapGesture {
-                        ble.startScan()
+                        ble.startScan(manual: true)
                     }
                 }
                 .padding(16)
