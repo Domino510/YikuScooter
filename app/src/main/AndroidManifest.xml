@@ -49,6 +49,7 @@
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.onecool.scooter.STATUS_UPDATED" />
+                <action android:name="com.onecool.scooter.BLE_STATE_CHANGED" />
                 <action android:name="com.onecool.scooter.WIDGET_CMD" />
             </intent-filter>
             <meta-data

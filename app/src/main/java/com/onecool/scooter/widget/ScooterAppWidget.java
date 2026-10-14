@@ -86,6 +86,16 @@ public class ScooterAppWidget extends AppWidgetProvider {
             for (int id : allIds) {
                 updateAppWidget(context, manager, id, true, String.format("%.1fV", voltage), speed);
             }
+        } else if (BleVehicleService.ACTION_BLE_STATE_CHANGED.equals(intent.getAction())) {
+            boolean connected = intent.getBooleanExtra("connected", false);
+            if (!connected) {
+                AppWidgetManager manager = AppWidgetManager.getInstance(context);
+                ComponentName thisWidget = new ComponentName(context, ScooterAppWidget.class);
+                int[] allIds = manager.getAppWidgetIds(thisWidget);
+                for (int id : allIds) {
+                    updateAppWidget(context, manager, id, false, "--.-V", 0);
+                }
+            }
         }
     }
 }

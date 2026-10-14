@@ -75,11 +75,14 @@ public class BleVehicleService extends Service {
     private byte[] mCurrentR = ScooterProtocol.DEFAULT_R.clone();
     private byte[] mCurrentM = ScooterProtocol.DEFAULT_M.clone();
 
+    private static final String ALARM_CHANNEL_ID = "YikuSentryAlarmChannel";
     private boolean mIsConnected = false;
     private boolean mIsScanning = false;
     private int mLastRssi = -100;
     private boolean mProximityUnlockEnabled = true;
+    private int mDistanceLevel = 1; // 默认 1 档 (最近贴身解锁)
     private long mLastProximityTriggerTime = 0;
+    private long mLastAlarmNotifyTime = 0;
 
     private ScooterProtocol.TelemetryData mLatestTelemetry = new ScooterProtocol.TelemetryData();
 
@@ -133,11 +136,20 @@ public class BleVehicleService extends Service {
             mBluetoothAdapter = bm.getAdapter();
         }
 
+        android.content.SharedPreferences prefs = getSharedPreferences("scooter_prefs", Context.MODE_PRIVATE);
+        mDistanceLevel = prefs.getInt("key_distance_level", 1);
+        mProximityUnlockEnabled = prefs.getBoolean("key_proximity_unlock", true);
+
         mHeartbeatRunnable = new Runnable() {
             @Override
             public void run() {
                 if (mIsConnected && mWriteChar != null) {
                     sendRaw(ScooterProtocol.CMD_HEARTBEAT, 170, 90);
+                    if (mBluetoothGatt != null) {
+                        try {
+                            mBluetoothGatt.readRemoteRssi();
+                        } catch (SecurityException ignored) {}
+                    }
                 }
                 mHandler.postDelayed(this, 1000);
             }
@@ -267,16 +279,8 @@ public class BleVehicleService extends Service {
                 }
             }
 
-            // 无感靠近解锁判定 (防抖 15 秒)
-            long now = System.currentTimeMillis();
-            if (mProximityUnlockEnabled && mLastRssi > -68 && now - mLastProximityTriggerTime > 15000) {
-                if (mIsConnected && !mLatestTelemetry.isPowerOn) {
-                    mLastProximityTriggerTime = now;
-                    Log.i(TAG, "检测到靠近车辆 (RSSI: " + mLastRssi + " dBm)，自动无感解锁并上电！");
-                    sendCommand(ScooterProtocol.CMD_UNLOCK);
-                    mHandler.postDelayed(() -> sendCommand(ScooterProtocol.CMD_POWER_ON), 300);
-                }
-            }
+            // 真·近场感应解锁判定 (根据 1~7 档严格映射物理 RSSI 阈值，防抖 15 秒)
+            checkAndTriggerProximityUnlock();
 
             // 若尚未建立连接，立即停止扫描并发起 GATT 连接
             if (!mIsConnected && mBluetoothGatt == null) {
@@ -369,14 +373,11 @@ public class BleVehicleService extends Service {
                         mHandler.removeCallbacks(mHeartbeatRunnable);
                         mHandler.post(mHeartbeatRunnable);
 
-                        // 若靠近触发判定满足，执行无感开锁与上电
-                        if (mProximityUnlockEnabled && mLastRssi > -68 && !mLatestTelemetry.isPowerOn) {
-                            sendCommand(ScooterProtocol.CMD_UNLOCK);
-                            mHandler.postDelayed(() -> sendCommand(ScooterProtocol.CMD_POWER_ON), 300);
-                        }
+                        // 检查是否满足当前档位的近场无感解锁条件
+                        checkAndTriggerProximityUnlock();
                     }
 
-                    // 开启车机 Notify 监听
+                    // 开启车机 Notify 监听 (严格串行：先写 Descriptor，在回调里再请求 MTU 30)
                     if (mNotifyChar != null) {
                         try {
                             gatt.setCharacteristicNotification(mNotifyChar, true);
@@ -384,8 +385,9 @@ public class BleVehicleService extends Service {
                             if (descriptor != null) {
                                 descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
                                 gatt.writeDescriptor(descriptor);
+                            } else {
+                                gatt.requestMtu(30);
                             }
-                            gatt.requestMtu(30);
                         } catch (SecurityException se) {
                             Log.e(TAG, "Notify 监听权限异常: ", se);
                         }
@@ -397,7 +399,20 @@ public class BleVehicleService extends Service {
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
             super.onDescriptorWrite(gatt, descriptor, status);
-            Log.i(TAG, "Notify 描述符配置完成，状态: " + status);
+            Log.i(TAG, "Notify 描述符配置完成，状态: " + status + "，开始申请 MTU 30");
+            try {
+                gatt.requestMtu(30);
+            } catch (SecurityException ignored) {}
+        }
+
+        @Override
+        public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
+            super.onReadRemoteRssi(gatt, rssi, status);
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                mLastRssi = rssi;
+                dispatchConnectionState();
+                checkAndTriggerProximityUnlock();
+            }
         }
 
         @Override
@@ -420,6 +435,17 @@ public class BleVehicleService extends Service {
             ScooterProtocol.TelemetryData t = ScooterProtocol.parseTelemetry(val);
             if (t.valid) {
                 mLatestTelemetry = t;
+                if (t.distanceLevel >= 1 && t.distanceLevel <= 7) {
+                    mDistanceLevel = t.distanceLevel;
+                }
+                // 哨兵防盗报警检测 (state == 4 为震动报警触发中)
+                if (t.state == 4) {
+                    long now = System.currentTimeMillis();
+                    if (now - mLastAlarmNotifyTime > 12000) {
+                        mLastAlarmNotifyTime = now;
+                        triggerSentryAlarmNotification();
+                    }
+                }
                 for (VehicleListener l : mListeners) {
                     l.onTelemetryUpdated(mLatestTelemetry);
                 }
@@ -481,10 +507,84 @@ public class BleVehicleService extends Service {
 
     public void setProximityUnlockEnabled(boolean enabled) {
         this.mProximityUnlockEnabled = enabled;
+        getSharedPreferences("scooter_prefs", Context.MODE_PRIVATE)
+                .edit().putBoolean("key_proximity_unlock", enabled).apply();
     }
 
     public boolean isProximityUnlockEnabled() {
         return mProximityUnlockEnabled;
+    }
+
+    public void setDistanceLevel(int level) {
+        this.mDistanceLevel = Math.max(1, Math.min(7, level));
+        getSharedPreferences("scooter_prefs", Context.MODE_PRIVATE)
+                .edit().putInt("key_distance_level", this.mDistanceLevel).apply();
+    }
+
+    public int getDistanceLevel() {
+        return mDistanceLevel;
+    }
+
+    /**
+     * 将 1~7 档感应距离映射为真实的蓝牙物理 RSSI 阈值 (dBm)
+     * 1档(贴身 0.5~1m): -50 dBm | 4档(适中 3m): -62 dBm | 7档(远距 8m): -74 dBm
+     */
+    public static int getRssiThresholdForLevel(int level) {
+        switch (level) {
+            case 1: return -50;
+            case 2: return -54;
+            case 3: return -58;
+            case 4: return -62;
+            case 5: return -66;
+            case 6: return -70;
+            case 7: return -74;
+            default: return -54;
+        }
+    }
+
+    private void checkAndTriggerProximityUnlock() {
+        if (!mProximityUnlockEnabled || !mIsConnected || mLatestTelemetry.isPowerOn) {
+            return;
+        }
+        int threshold = getRssiThresholdForLevel(mDistanceLevel);
+        long now = System.currentTimeMillis();
+        if (mLastRssi >= threshold && mLastRssi < 0 && (now - mLastProximityTriggerTime > 15000)) {
+            mLastProximityTriggerTime = now;
+            Log.i(TAG, "满足 " + mDistanceLevel + " 档近场解锁门限 (当前 RSSI: " + mLastRssi + " dBm >= " + threshold + " dBm)，执行无感解锁！");
+            sendCommand(ScooterProtocol.CMD_UNLOCK);
+            mHandler.postDelayed(() -> sendCommand(ScooterProtocol.CMD_POWER_ON), 350);
+        }
+    }
+
+    private void triggerSentryAlarmNotification() {
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) return;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel alarmChannel = new NotificationChannel(
+                        ALARM_CHANNEL_ID,
+                        "哨兵防盗警报",
+                        NotificationManager.IMPORTANCE_HIGH
+                );
+                alarmChannel.enableVibration(true);
+                alarmChannel.setVibrationPattern(new long[]{0, 400, 200, 400, 200, 600});
+                nm.createNotificationChannel(alarmChannel);
+            }
+            Intent intent = new Intent(this, com.onecool.scooter.ui.MainActivity.class);
+            PendingIntent pi = PendingIntent.getActivity(this, 202, intent, PendingIntent.FLAG_IMMUTABLE);
+            Notification alarmNotif = new NotificationCompat.Builder(this, ALARM_CHANNEL_ID)
+                    .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                    .setContentTitle("车辆防盗警报触发！")
+                    .setContentText("检测到您的壹酷封神DZ发生异常震动或被触碰，请留意车辆安全。")
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setDefaults(Notification.DEFAULT_ALL)
+                    .setAutoCancel(true)
+                    .setContentIntent(pi)
+                    .build();
+            nm.notify(999, alarmNotif);
+        } catch (Exception e) {
+            Log.e(TAG, "发送防盗告警通知异常: ", e);
+        }
     }
 
     private void dispatchConnectionState() {

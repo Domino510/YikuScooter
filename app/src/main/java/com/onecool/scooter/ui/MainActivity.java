@@ -46,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
     private BleVehicleService mBleService;
     private boolean mIsBound = false;
     private boolean mIsReceiverRegistered = false;
+    private boolean mIsUpdatingUI = false;
 
     // GPS 卫星高精度测速与里程积分引擎
     private LocationManager mLocationManager;
@@ -282,6 +283,10 @@ public class MainActivity extends AppCompatActivity {
                 int cmd = isLocked ? ScooterProtocol.CMD_UNLOCK : ScooterProtocol.CMD_LOCK;
                 sendCommand(cmd, isLocked ? "撤防解锁" : "锁车设防");
             });
+            btnLockToggle.setOnLongClickListener(v -> {
+                sendCommand(ScooterProtocol.CMD_MUTE, "已开启夜间静音设防 (无声锁车)");
+                return true;
+            });
         }
         if (btnSpeedLimitToggle != null) {
             btnSpeedLimitToggle.setOnClickListener(v -> {
@@ -291,7 +296,12 @@ public class MainActivity extends AppCompatActivity {
             });
         }
         if (btnSeekVehicle != null) {
-            btnSeekVehicle.setOnClickListener(v -> sendCommand(ScooterProtocol.CMD_MUTE, "鸣笛寻车"));
+            btnSeekVehicle.setOnClickListener(v -> {
+                boolean isLocked = (mBleService != null && mBleService.getLatestTelemetry().isLocked);
+                boolean isPowerOn = (mBleService != null && mBleService.getLatestTelemetry().isPowerOn);
+                String msg = (!isLocked && !isPowerOn) ? "夜间静音设防 (无声锁车)" : "鸣笛寻车";
+                sendCommand(ScooterProtocol.CMD_MUTE, msg);
+            });
         }
 
         // 智能近场与安防
@@ -303,11 +313,20 @@ public class MainActivity extends AppCompatActivity {
         seekSensitivityLevel = findViewById(R.id.seek_sensitivity_level);
         tvSensitivityVal = findViewById(R.id.tv_sensitivity_val);
 
+        int savedDistLevel = (mPrefs != null) ? mPrefs.getInt("key_distance_level", 1) : 1;
+        if (seekDistanceLevel != null) {
+            seekDistanceLevel.setProgress(Math.max(0, Math.min(6, savedDistLevel - 1)));
+        }
+        if (tvDistanceVal != null) {
+            tvDistanceVal.setText(formatDistanceLabel(savedDistLevel));
+        }
+
         if (swProximityUnlock != null) {
             if (mBleService != null) {
                 swProximityUnlock.setChecked(mBleService.isProximityUnlockEnabled());
             }
             swProximityUnlock.setOnCheckedChangeListener((btn, isChecked) -> {
+                if (mIsUpdatingUI) return;
                 if (mBleService != null) {
                     mBleService.setProximityUnlockEnabled(isChecked);
                 }
@@ -318,6 +337,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (swAutoLock != null) {
             swAutoLock.setOnCheckedChangeListener((btn, isChecked) -> {
+                if (mIsUpdatingUI) return;
                 sendCommand(isChecked ? ScooterProtocol.CMD_AUTO_LOCK_ON : ScooterProtocol.CMD_AUTO_LOCK_OFF,
                         isChecked ? "开启离车自动设防" : "关闭离车自动设防");
             });
@@ -325,6 +345,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (swOverspeedTip != null) {
             swOverspeedTip.setOnCheckedChangeListener((btn, isChecked) -> {
+                if (mIsUpdatingUI) return;
                 sendCommand(isChecked ? ScooterProtocol.CMD_CHAOSU_ON : ScooterProtocol.CMD_CHAOSU_OFF,
                         isChecked ? "开启超速警示音" : "关闭超速警示音");
             });
@@ -335,9 +356,12 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                     int level = progress + 1; // 1~7
-                    if (tvDistanceVal != null) tvDistanceVal.setText(level + " 档");
-                    if (fromUser) {
-                        sendCommand(ScooterProtocol.CMD_DISTANCE_BASE + level, "调节感应距离至 " + level + " 档");
+                    if (tvDistanceVal != null) tvDistanceVal.setText(formatDistanceLabel(level));
+                    if (fromUser && !mIsUpdatingUI) {
+                        if (mBleService != null) {
+                            mBleService.setDistanceLevel(level);
+                        }
+                        sendCommand(ScooterProtocol.CMD_DISTANCE_BASE + level, "感应距离已设为 " + formatDistanceLabel(level));
                     }
                 }
                 @Override public void onStartTrackingTouch(SeekBar seekBar) {}
@@ -350,9 +374,9 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                     int level = progress + 1; // 1~4
-                    if (tvSensitivityVal != null) tvSensitivityVal.setText(level + " 级");
-                    if (fromUser) {
-                        sendCommand(ScooterProtocol.CMD_SENSITIVITY_BASE + level, "调节报警灵敏度至 " + level + " 级");
+                    if (tvSensitivityVal != null) tvSensitivityVal.setText(formatSensitivityLabel(level));
+                    if (fromUser && !mIsUpdatingUI) {
+                        sendCommand(ScooterProtocol.CMD_SENSITIVITY_BASE + level, "震动灵敏度已设为 " + formatSensitivityLabel(level));
                     }
                 }
                 @Override public void onStartTrackingTouch(SeekBar seekBar) {}
@@ -567,10 +591,26 @@ public class MainActivity extends AppCompatActivity {
             tvTotalTrip.setText(String.format(Locale.getDefault(), "%.1f km", displayTotal));
         }
 
-        // 故障自检与限速状态
+        // 修复漏洞 1：START 启停能量环动态变色与状态切换
+        if (btnPowerCore != null) {
+            btnPowerCore.setBackgroundResource(t.isPowerOn ? R.drawable.bg_power_ring_on : R.drawable.bg_power_ring_off);
+        }
+        if (tvPowerCoreTitle != null) {
+            tvPowerCoreTitle.setText(t.isPowerOn ? "STOP" : "START");
+            tvPowerCoreTitle.setTextColor(t.isPowerOn ? 0xFF00E5FF : 0xFFFFFFFF);
+        }
+        if (tvPowerCoreSub != null) {
+            tvPowerCoreSub.setText(t.isPowerOn ? "点击断电" : "点击上电");
+        }
+
+        // 故障自检、哨兵报警与 60V 加长锂电预计续航智能测算
         if (tvErrorStatus != null) {
-            if (t.errorCode == 0) {
-                tvErrorStatus.setText("整车系统自检正常");
+            if (t.state == 4) {
+                tvErrorStatus.setText("哨兵警报: 车辆触发震动防盗报警！");
+                tvErrorStatus.setTextColor(0xFFFF3D00);
+            } else if (t.errorCode == 0) {
+                int estRangeKm = Math.max(0, Math.round(t.batteryPercent * 0.65f));
+                tvErrorStatus.setText("系统正常 · 预计续航 ~" + estRangeKm + " km");
                 tvErrorStatus.setTextColor(0xFF00E676);
             } else {
                 tvErrorStatus.setText("系统告警: " + t.errorMsg);
@@ -588,11 +628,11 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // 方案 A 特斯拉风磁贴动态状态与微光指示同步
+        // 方案 A 特斯拉风磁贴动态状态与静音设防同步
         if (tvTileLockTitle != null && tvTileLockSub != null && ivTileLock != null) {
             if (t.isLocked) {
                 tvTileLockTitle.setText("撤防解锁");
-                tvTileLockSub.setText("已设防 · 防盗中");
+                tvTileLockSub.setText(t.state == 5 ? "静音设防 · 守护中" : "已设防 · 防盗中");
                 tvTileLockSub.setTextColor(0xFF00E5FF);
                 ivTileLock.setImageTintList(ContextCompat.getColorStateList(this, R.color.cyan));
                 if (btnLockToggle != null) btnLockToggle.setBackgroundResource(R.drawable.bg_magnetic_tile_cyan);
@@ -621,8 +661,45 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        if (ivTileSeek != null) {
+        if (tvTileSeekTitle != null && tvTileSeekSub != null && ivTileSeek != null) {
+            if (!t.isLocked && !t.isPowerOn) {
+                tvTileSeekTitle.setText("静音锁车");
+                tvTileSeekSub.setText("无声设防 · 不扰民");
+                tvTileSeekSub.setTextColor(0xFF94A3B8);
+            } else {
+                tvTileSeekTitle.setText("寻车鸣笛");
+                tvTileSeekSub.setText("声光寻车");
+                tvTileSeekSub.setTextColor(0xFF64748B);
+            }
             ivTileSeek.setImageTintList(ContextCompat.getColorStateList(this, R.color.text_dim));
+        }
+
+        // 修复漏洞 4：车机真实开关与滑块档位双向回显 (带防死循环锁)
+        mIsUpdatingUI = true;
+        try {
+            if (swProximityUnlock != null) {
+                swProximityUnlock.setChecked(t.isProximitySensorOn);
+            }
+            if (swAutoLock != null) {
+                swAutoLock.setChecked(t.isAutoLock);
+            }
+            if (swOverspeedTip != null) {
+                swOverspeedTip.setChecked(t.isOverspeedTips);
+            }
+            if (seekDistanceLevel != null && t.distanceLevel >= 1 && t.distanceLevel <= 7) {
+                seekDistanceLevel.setProgress(t.distanceLevel - 1);
+                if (tvDistanceVal != null) {
+                    tvDistanceVal.setText(formatDistanceLabel(t.distanceLevel));
+                }
+            }
+            if (seekSensitivityLevel != null && t.sensitivity >= 1 && t.sensitivity <= 4) {
+                seekSensitivityLevel.setProgress(t.sensitivity - 1);
+                if (tvSensitivityVal != null) {
+                    tvSensitivityVal.setText(formatSensitivityLabel(t.sensitivity));
+                }
+            }
+        } finally {
+            mIsUpdatingUI = false;
         }
 
         // 电池分段选择器同步
@@ -825,6 +902,29 @@ public class MainActivity extends AppCompatActivity {
         if (btnVolt72v != null) {
             btnVolt72v.setBackgroundResource(sysVolt == 72 ? R.drawable.bg_segmented_item_selected : R.drawable.bg_segmented_item_normal);
             btnVolt72v.setTextColor(sysVolt == 72 ? 0xFF00E5FF : 0xFF94A3B8);
+        }
+    }
+
+    private String formatDistanceLabel(int level) {
+        switch (level) {
+            case 1: return "1 档 (贴身 0.8m)";
+            case 2: return "2 档 (近距 1.5m)";
+            case 3: return "3 档 (2.5m)";
+            case 4: return "4 档 (适中 3.5m)";
+            case 5: return "5 档 (5.0m)";
+            case 6: return "6 档 (6.5m)";
+            case 7: return "7 档 (远距 8.5m)";
+            default: return level + " 档";
+        }
+    }
+
+    private String formatSensitivityLabel(int level) {
+        switch (level) {
+            case 1: return "1 级 (低敏)";
+            case 2: return "2 级 (标准)";
+            case 3: return "3 级 (敏锐)";
+            case 4: return "4 级 (高敏)";
+            default: return level + " 级";
         }
     }
 }
