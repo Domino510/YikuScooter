@@ -20,7 +20,7 @@ public class LocationSpeedEngine: NSObject, ObservableObject, CLLocationManagerD
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.distanceFilter = 1.0
-        locationManager.allowsBackgroundLocationUpdates = true
+        // 移除 allowsBackgroundLocationUpdates = true，防止在免费个人证书签名或未授权 Always 时触发 NSInternalInconsistencyException 启动崩溃
         locationManager.pausesLocationUpdatesAutomatically = false
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()

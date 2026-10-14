@@ -29,12 +29,7 @@
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>用于行车高精度GPS卫星时速测速与单次行驶里程积分</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>用于后台靠近车辆无感解锁与行车轨迹测速</string>
-    <key>UIBackgroundModes</key>
-    <array>
-        <string>bluetooth-central</string>
-        <string>location</string>
-    </array>
+    <string>用于靠近车辆无感解锁与行车轨迹测速</string>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UISupportedInterfaceOrientations</key>

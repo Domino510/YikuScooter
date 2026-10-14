@@ -8,10 +8,8 @@ struct ContentView: View {
     @State private var odoInputText = ""
 
     // AirLock
-    @State private var proxUnlock = true
     @State private var autoLock = false
     @State private var overspeedTip = false
-    @State private var distanceLevel: Double = 4
     @State private var sensitivityLevel: Double = 2
 
     // ECU
@@ -47,6 +45,24 @@ struct ContentView: View {
         gearText.contains("P") ? Color.orange : Color.cyan
     }
 
+    private var estRangeKm: Int {
+        let pct = ble.telemetry.batteryPercent > 0 ? ble.telemetry.batteryPercent : 81
+        return max(0, Int(round(Double(pct) * 0.65)))
+    }
+
+    private func distanceLabel(_ level: Int) -> String {
+        switch level {
+        case 1: return "1 档 (贴身 0.8m)"
+        case 2: return "2 档 (近距 1.5m)"
+        case 3: return "3 档 (2.5m)"
+        case 4: return "4 档 (适中 3.5m)"
+        case 5: return "5 档 (5.0m)"
+        case 6: return "6 档 (6.5m)"
+        case 7: return "7 档 (远距 8.5m)"
+        default: return "\(level) 档"
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
@@ -65,7 +81,7 @@ struct ContentView: View {
                         Circle()
                             .fill(ble.isConnected ? Color.green : Color.red)
                             .frame(width: 8, height: 8)
-                        Text(ble.isConnected ? "已在线" : "等待连接")
+                        Text(ble.isConnected ? "已在线 (\(ble.rssi)dBm)" : "等待连接")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.white)
                     }
@@ -73,6 +89,9 @@ struct ContentView: View {
                     .padding(.vertical, 6)
                     .background(Color(white: 0.12))
                     .cornerRadius(14)
+                    .onTapGesture {
+                        ble.startScan()
+                    }
                 }
                 .padding(16)
                 .background(Color(red: 0.07, green: 0.09, blue: 0.14))
@@ -110,7 +129,7 @@ struct ContentView: View {
                         .cornerRadius(12)
                     }
 
-                    // 四象限数据卡片
+                    // 四象限数据卡片 (无图标干净排版)
                     HStack(spacing: 6) {
                         metricBox(title: "母线电压", val: String(format: "%.1f V", ble.telemetry.voltage > 0 ? ble.telemetry.voltage : 58.0), color: .cyan)
                         metricBox(title: "剩余电量", val: "\(ble.telemetry.batteryPercent > 0 ? ble.telemetry.batteryPercent : 81) %", color: .green)
@@ -122,11 +141,21 @@ struct ContentView: View {
                             }
                     }
 
-                    // 自检状态条
+                    // 自检、哨兵报警与预计续航状态条
                     HStack {
-                        Text(ble.telemetry.errorCode == 0 ? "整车系统自检正常" : "系统告警")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.green)
+                        if ble.telemetry.state == 4 {
+                            Text("哨兵警报: 车辆触发震动防盗报警！")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.red)
+                        } else if ble.telemetry.errorCode == 0 {
+                            Text("系统正常 · 预计续航 ~\(estRangeKm) km")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.green)
+                        } else {
+                            Text("系统告警: \(ble.telemetry.errorMsg)")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.red)
+                        }
                         Spacer()
                         Text(ble.telemetry.isSpeedLimit ? "25 km/h 限速" : "极速模式")
                             .font(.system(size: 12, weight: .bold))
@@ -169,7 +198,7 @@ struct ContentView: View {
                             VStack(spacing: 2) {
                                 Text(ble.telemetry.isPowerOn ? "STOP" : "START")
                                     .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(ble.telemetry.isPowerOn ? .cyan : .white)
                                 Text(ble.telemetry.isPowerOn ? "点击断电" : "点击上电")
                                     .font(.system(size: 10))
                                     .foregroundColor(Color(white: 0.5))
@@ -181,7 +210,7 @@ struct ContentView: View {
                     HStack(spacing: 8) {
                         tileButton(
                             title: ble.telemetry.isLocked ? "撤防解锁" : "车辆设防",
-                            sub: ble.telemetry.isLocked ? "已设防 · 防盗中" : "未设防 · 待上锁",
+                            sub: ble.telemetry.isLocked ? (ble.telemetry.state == 5 ? "静音设防 · 守护中" : "已设防 · 防盗中") : "未设防 · 待上锁",
                             systemIcon: ble.telemetry.isLocked ? "lock.fill" : "lock.open.fill",
                             accentColor: ble.telemetry.isLocked ? .cyan : .orange
                         ) {
@@ -190,7 +219,7 @@ struct ContentView: View {
                         }
 
                         tileButton(
-                            title: "动力极速",
+                            title: ble.telemetry.isSpeedLimit ? "解除限速" : "动力极速",
                             sub: ble.telemetry.isSpeedLimit ? "25km/h 限速" : "极速全开 · 狂暴",
                             systemIcon: "bolt.fill",
                             accentColor: ble.telemetry.isSpeedLimit ? .orange : .cyan
@@ -199,14 +228,96 @@ struct ContentView: View {
                             ble.sendCommand(cmd: cmd)
                         }
 
+                        let showSilentLock = (!ble.telemetry.isLocked && !ble.telemetry.isPowerOn)
                         tileButton(
-                            title: "寻车鸣笛",
-                            sub: "声光寻车",
-                            systemIcon: "speaker.wave.3.fill",
-                            accentColor: Color(white: 0.6)
+                            title: showSilentLock ? "静音锁车" : "寻车鸣笛",
+                            sub: showSilentLock ? "无声设防 · 不扰民" : "声光寻车",
+                            systemIcon: showSilentLock ? "bell.slash.fill" : "speaker.wave.3.fill",
+                            accentColor: Color(white: 0.65)
                         ) {
                             ble.sendCommand(cmd: ScooterProtocol.cmdMute)
                         }
+                    }
+                }
+                .padding(16)
+                .background(Color(red: 0.07, green: 0.09, blue: 0.14))
+                .cornerRadius(16)
+
+                // AirLock 无感互联与安防
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("AirLock 无感互联与安防")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(Color(white: 0.55))
+
+                    Toggle(isOn: Binding(
+                        get: { ble.proximityUnlockEnabled },
+                        set: { val in
+                            ble.setProximityUnlock(val)
+                            ble.sendCommand(cmd: val ? ScooterProtocol.cmdGanyingOn : ScooterProtocol.cmdGanyingOff)
+                        }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("感应解锁 (AirLock)")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                            Text("手机靠近车辆自动撤防并启动电门")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(white: 0.45))
+                        }
+                    }
+                    .tint(.cyan)
+
+                    VStack(spacing: 6) {
+                        HStack {
+                            Text("感应解锁灵敏距离")
+                                .font(.system(size: 13))
+                                .foregroundColor(.white)
+                            Spacer()
+                            Text(distanceLabel(ble.distanceLevel))
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.cyan)
+                        }
+                        Slider(value: Binding(
+                            get: { Double(ble.distanceLevel) },
+                            set: { newVal in
+                                let lvl = Int(round(newVal))
+                                if lvl != ble.distanceLevel {
+                                    ble.setDistanceLevel(lvl)
+                                    ble.sendCommand(cmd: UInt8(64 + lvl))
+                                }
+                            }
+                        ), in: 1...7, step: 1)
+                        .tint(.cyan)
+                    }
+
+                    Toggle(isOn: $autoLock) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("离车自动设防")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                            Text("离开蓝牙范围自动锁车断电")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(white: 0.45))
+                        }
+                    }
+                    .tint(.cyan)
+                    .onChange(of: autoLock) { val in
+                        ble.sendCommand(cmd: val ? ScooterProtocol.cmdAutoLockOn : ScooterProtocol.cmdAutoLockOff)
+                    }
+
+                    Toggle(isOn: $overspeedTip) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("超速警示鸣笛")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                            Text("时速超过 15km/h 触发提示音")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(white: 0.45))
+                        }
+                    }
+                    .tint(.cyan)
+                    .onChange(of: overspeedTip) { val in
+                        ble.sendCommand(cmd: val ? ScooterProtocol.cmdChaosuOn : ScooterProtocol.cmdChaosuOff)
                     }
                 }
                 .padding(16)
